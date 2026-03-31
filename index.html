@@ -440,7 +440,7 @@ const SNAKE_CAMEL=Object.fromEntries(Object.entries(CAMEL_SNAKE).map(([c,s])=>[s
 const TABLE_MAP={users:"users",submissions:"submissions",missions:"missions",historico_pontos:"historico_pontos",alertas_divergencia:"alertas_divergencia"};
 function toSnake(data){const s={};for(const[k,v]of Object.entries(data))s[CAMEL_SNAKE[k]||k]=v;return s;}
 function toCamel(data){const c={};for(const[k,v]of Object.entries(data))c[SNAKE_CAMEL[k]||k]=v;return c;}
-// ── Camada de acesso ao Supabase (anteriormente nomeada fb* por legado do Firebase) ──
+// ── Camada de acesso ao Supabase ──
 async function supabaseGet(path) {
   const[table,id]=path.split("/");const t=TABLE_MAP[table];if(!t)return null;
   if(id){
@@ -511,7 +511,7 @@ async function cleanReviewedImages() {
 
 
 
-let store = { users:[], submissions:[], missions:[], loaded:false, firebaseError:false };
+let store = { users:[], submissions:[], missions:[], loaded:false, dbError:false };
 let storeListeners = [];
 const subscribe = fn => { storeListeners.push(fn); return () => { storeListeners = storeListeners.filter(l => l !== fn); }; };
 const notify = () => storeListeners.forEach(fn => fn({...store}));
@@ -582,12 +582,12 @@ async function loadFromSupabase() {
     // Se subscribeSupabase já recebeu o primeiro evento enquanto este fetch
     // ainda estava em voo, descartar o resultado REST evita o efeito flicker.
     if (!isUsingRealtime) {
-      store = { users, submissions, missions, loaded:true, firebaseError:false };
+      store = { users, submissions, missions, loaded:true, dbError:false };
       notify();
     }
   } catch(e) {
     if (!isUsingRealtime) {
-      store = { ...store, loaded:true, firebaseError:true };
+      store = { ...store, loaded:true, dbError:true };
       notify();
     }
   }
@@ -599,7 +599,7 @@ let _pollingInterval = null;
 
 // subscribeSupabase → usa Supabase Realtime (WebSocket nativo)
 // Mesmo contrato de interface: retorna função cleanup()
-function subscribeFirebase(onReady) {
+function subscribeDB(onReady) {
   let active = true;
   let realtimeChannel = null;
 
@@ -614,7 +614,7 @@ function subscribeFirebase(onReady) {
       }
     } catch(e) {
       if (!isUsingRealtime) {
-        store = { ...store, loaded: true, firebaseError: true };
+        store = { ...store, loaded: true, dbError: true };
         notify();
         if (typeof onReady === "function") onReady();
       }
@@ -893,7 +893,7 @@ async function submitMission(userId, missionId, imageBase64) {
   }
   const imageUrl = await uploadToCloudinary(imageBase64);
   if (!imageUrl) return { error:"Erro ao enviar a foto. Verifique sua conexão e tente novamente." };
-  // Apenas a URL do Cloudinary é gravada — nunca o base64 (evita inflar o Firebase)
+  // Apenas a URL do Cloudinary é gravada — nunca o base64
   const sub = { userId, missionId, imageUrl, status:"pending", createdAt: new Date().toISOString() };
   const res = await fbPush("submissions", sub);
   const newSub = { ...sub, id: res.name };
@@ -1006,7 +1006,7 @@ async function pontosNoDiaDoExtrato(userId, dateStr) {
 // ── Verificação de divergência extrato vs ranking ────────────────────────────
 // Lê o extrato do usuário e compara com os pontos atuais.
 // NÃO altera nada — apenas grava um alerta no banco para o admin consultar.
-// Só verifica uma vez por dia para não sobrecarregar o Firebase.
+// Só verifica uma vez por dia para não sobrecarregar o banco.
 async function verificarDivergenciaPontos(userId) {
   const u = store.users.find(u => u.id === userId);
   if (!u || u.role === "admin") return;
@@ -3490,14 +3490,14 @@ function App() {
   const [user, setUser] = useState(null);
   const [tick, setTick] = useState(0);
   const [loaded, setLoaded] = useState(false);
-  const [firebaseError, setFirebaseError] = useState(false);
+  const [dbError, setDbError] = useState(false);
 
   useEffect(() => {
-    // subscribeFirebase retorna cleanup() diretamente — o useEffect executa
+    // subscribeDB retorna cleanup() diretamente — o useEffect executa
     // essa função ao desmontar o App, removendo os listeners via ref.off(handler).
-    const cleanup = subscribeFirebase(() => {
+    const cleanup = subscribeDB(() => {
       setLoaded(true);
-      setFirebaseError(store.firebaseError || false);
+      setFirebaseError(store.dbError || false);
     });
     return cleanup;
   }, []);
@@ -3511,7 +3511,7 @@ function App() {
     </div>
   );
 
-  if (firebaseError) return (
+  if (dbError) return (
     <div className="app" style={{display:"flex", alignItems:"center", justifyContent:"center", minHeight:"100vh", flexDirection:"column", gap:20, padding:24}}>
       <div className="scanline"/>
       <div style={{fontFamily:"Orbitron", fontSize:28, fontWeight:900, background:"linear-gradient(135deg,#00e5ff,#ffd700)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent"}}>MISSÃO LEVEL-UP</div>
@@ -3694,10 +3694,5 @@ window.FCM_MESSAGES = {
 };
 console.log('[GameOps] Pronto. Rodando 100% no Supabase.');
 </script>
-
-<div class="badge-content"><svg width="10.67" height="16" viewBox="0 0 50 75" fill="none" class="replit-logo">
-        <path d="M25 19.995C25 20.0375 25 20.0575 25 20.085C25.015 21.34 25.5475 22.6275 26.425 23.525C26.445 23.545 26.4475 23.5475 26.45 23.55C26.485 23.585 26.5025 23.6025 26.54 23.6375C27.4225 24.485 28.6775 25.005 29.9025 25.03C29.9525 25.03 29.9975 25.03 30.0825 25.03H42C44.8 25.03 46.2 25.03 47.27 25.575C48.21 26.055 48.975 26.82 49.455 27.76C50 28.83 50 30.23 50 33.03V42.03C50 44.83 50 46.23 49.455 47.3C48.975 48.24 48.21 49.005 47.27 49.485C46.2 50.03 44.8 50.03 42 50.03H29.9275C28.6425 50.0325 27.3225 50.58 26.4125 51.485C26.4075 51.49 26.4775 51.42 26.45 51.4475C26.445 51.4525 26.4425 51.4525 26.4225 51.475C25.545 52.3725 25.0125 53.6575 24.9975 54.9125C24.9975 54.94 24.9975 54.9625 24.9975 55.0025V67.0575C24.9975 69.8575 24.9975 71.2575 24.4525 72.3275C23.9725 73.2675 23.2075 74.0325 22.2675 74.5125C21.1975 75.0575 19.7975 75.0575 16.9975 75.0575H7.9975C5.1975 75.0575 3.7975 75.0575 2.7275 74.5125C1.7875 74.0325 1.0225 73.2675 0.542498 72.3275C-0.00250244 71.2575 -0.00250244 69.8575 -0.00250244 67.0575V58.0575C-0.00250244 55.2575 -0.00250244 53.8575 0.542498 52.7875C1.0225 51.8475 1.7875 51.0825 2.7275 50.6025C3.7975 50.0575 5.1975 50.0575 7.9975 50.0575H19.7225C19.9 50.0575 19.9875 50.0575 20.08 50.055C21.2475 50.0125 22.4375 49.52 23.295 48.7225C23.3625 48.66 23.4125 48.61 23.5125 48.51C23.55 48.4725 23.5675 48.455 23.6025 48.42C24.455 47.5325 24.9725 46.2825 24.9975 45.0525C24.9975 45.0025 24.9975 44.96 24.9975 44.875V30.12C24.9975 30.0325 24.9975 29.99 24.9975 29.94C24.9725 28.71 24.455 27.46 23.6025 26.575C23.5675 26.54 23.55 26.52 23.5125 26.4825C23.475 26.445 23.4575 26.4275 23.42 26.3925C22.5325 25.54 21.2825 25.0225 20.0525 24.9975C20.0025 24.9975 19.96 24.9975 19.875 24.9975H7.9975C5.1975 24.9975 3.7975 24.9975 2.7275 24.4525C1.7875 23.9725 1.0225 23.2075 0.542498 22.2675C-0.00250244 21.1975 -0.00250244 19.7975 -0.00250244 16.9975V7.9975C-2.44146e-06 5.2 -2.44379e-06 3.8 0.544998 2.73C1.025 1.79 1.79 1.025 2.73 0.545C3.8 0 5.2 0 8 0H17C19.8 0 21.2 0 22.27 0.545C23.21 1.025 23.975 1.79 24.455 2.73C25 3.8 25 5.2 25 8V19.995Z" fill="currentColor"></path>
-      </svg><div class="replit-text">Made with Replit</div></div><button class="close-button" aria-label="Close"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="close-icon">
-        <path d="M18 6 6 18"></path>
-        <path d="m6 6 12 12"></path>
-      </svg></button></div></template></div></body></html>
+</body>
+</html>
