@@ -131,7 +131,6 @@ body{background:var(--cor-fundo);color:var(--cor-texto);font-family:'Rajdhani',s
 <script type="text/babel">
 const { useState, useEffect, useRef } = React;
 
-console.log('[GameOps] Iniciando com Supabase.');
 
 const INITIAL_MISSIONS = [
   { id: 1,  title: "Oração Diária I",   desc: "Ore por até 15 minutos buscando mais intimidade com Deus.", tip: "Escolha um horário fixo, de preferência pela manhã ao acordar ou à noite antes de dormir. Separe um lugar tranquilo, sem distração. Anote um pedido e uma gratidão do dia.", points: 100, category: "Espiritualidade", difficulty: "FÁCIL", frequency: "daily" },
@@ -401,11 +400,11 @@ function getEffectiveLevelInfo(userId) {
 const SUPABASE_URL = "https://oyvvlbyxlaetlghzgjam.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95dnZsYnl4bGFldGxnaHpnamFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2Mzc1NDksImV4cCI6MjA5MDIxMzU0OX0.4JpnIymqZOgNnw819I_o8qJq3BwOuvU4XLZ_w79Npqw";
 
-async function sbQuery(table, filters={}) {
+async function sbQuery(table, filters={}, limit=1000) {
   try {
-    let url=`${SUPABASE_URL}/rest/v1/${table}?select=*`;
+    let url=`${SUPABASE_URL}/rest/v1/${table}?select=*&limit=${limit}`;
     for(const [k,v] of Object.entries(filters)) url+=`&${k}=eq.${v}`;
-    const r=await fetch(url,{headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`}});
+    const r=await fetch(url,{headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,"Prefer":"count=none"}});
     return r.ok?r.json():null;
   } catch(e){return null;}
 }
@@ -597,8 +596,7 @@ async function loadFromSupabase() {
 let isUsingRealtime = false;
 let _pollingInterval = null;
 
-// subscribeSupabase → usa Supabase Realtime (WebSocket nativo)
-// Mesmo contrato de interface: retorna função cleanup()
+// subscribeDB → Supabase Realtime (WebSocket) com fallback para polling
 function subscribeDB(onReady) {
   let active = true;
   let realtimeChannel = null;
@@ -643,7 +641,6 @@ function subscribeDB(onReady) {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' },    () => { if (active) loadFromSupabase().catch(()=>{}); })
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
-            console.log('[GameOps] Supabase Realtime conectado via WebSocket.');
           }
           if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
             console.warn('[GameOps] Realtime com problema, ativando polling de backup.');
@@ -666,7 +663,6 @@ function subscribeDB(onReady) {
     isUsingRealtime = false;
     if (realtimeChannel) { try { realtimeChannel.unsubscribe(); } catch(e){} realtimeChannel = null; }
     if (_pollingInterval) { clearInterval(_pollingInterval); _pollingInterval = null; }
-    console.log("[GameOps] Supabase Realtime encerrado (cleanup).");
   };
 }
 // ────────────────────────────────────────────────────────────────────────────
@@ -700,7 +696,8 @@ function weekStr() {
 
 // ─── GameOps: data do servidor → usa hora local em BRT (UTC-3 fixo) ─────────
 async function getServerDateStr() {
-  // Usa a hora local corrigida para o fuso de Brasília/Salvador (UTC-3 fixo).
+  // Retorna a data atual no fuso de Brasília/Salvador (UTC-3).
+  // Usa nowBRT() — sem API externa, dispositivo deve estar com hora correta.
   return todayStr();
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -801,7 +798,9 @@ function isMissionLocked(userId, missionId) {
   const mission = store.missions.find(m => m.id === missionId);
   if (!mission) return false;
   const freq = mission.frequency || "once";
-  const approved = store.submissions.filter(s => s.userId===userId && s.missionId===missionId && s.status==="approved");
+  // Filtra apenas submissions genuinamente aprovadas (com approvedDate preenchido)
+  // Submissions estornadas têm status="rejected" e não chegam aqui
+  const approved = store.submissions.filter(s => s.userId===userId && s.missionId===missionId && s.status==="approved" && s.approvedDate !== null && s.approvedDate !== undefined);
   if (freq === "once") return approved.length > 0;
   // Diária: compara approvedDate com hoje em BRT
   if (freq === "daily") return approved.some(s => s.approvedDate === todayStr());
@@ -894,7 +893,10 @@ async function submitMission(userId, missionId, imageBase64) {
   const imageUrl = await uploadToCloudinary(imageBase64);
   if (!imageUrl) return { error:"Erro ao enviar a foto. Verifique sua conexão e tente novamente." };
   // Apenas a URL do Cloudinary é gravada — nunca o base64
-  const sub = { userId, missionId, imageUrl, status:"pending", createdAt: new Date().toISOString() };
+  // nowBRT() garante fuso Bahia (UTC-3) — evita virada de dia às 21h em UTC
+  const brt = nowBRT(); const pad = n => String(n).padStart(2,"0");
+  const createdAtBRT = `${brt.getFullYear()}-${pad(brt.getMonth()+1)}-${pad(brt.getDate())}T${pad(brt.getHours())}:${pad(brt.getMinutes())}:${pad(brt.getSeconds())}.000-03:00`;
+  const sub = { userId, missionId, imageUrl, status:"pending", createdAt: createdAtBRT };
   const res = await fbPush("submissions", sub);
   const newSub = { ...sub, id: res.name };
   store.submissions = [...store.submissions, newSub]; notify(); return { submission: newSub };
@@ -976,7 +978,6 @@ async function revokeSubmission(submissionId) {
     store.users = store.users.map(uu => uu.id === u.id ? { ...uu, points: newPoints } : uu);
     // 2. Registra no historico de pontos (extrato)
     await registrarHistorico(u.id, "estorno", -pts, `Estorno: ${m.title}`, u.points);
-    console.log("[revokeSubmission] Estorno processado:", u.name, "-", pts, "pts. Novo total:", newPoints);
   }
   // 3. Volta a submission para rejeitada e zera TODOS os campos de aprovacao
   // para que isMissionLocked nao a considere como concluida no periodo
@@ -1419,7 +1420,26 @@ function MissionCard({ mission, user, onSubmit, isAdmin, onDelete }) {
   const handleFile = e => {
     const file = e.target.files[0]; if (!file) return;
     const reader = new FileReader();
-    reader.onload = ev => { setImageBase64(ev.target.result); setPreviewUrl(ev.target.result); };
+    reader.onload = ev => {
+      // Comprime via canvas antes de enviar — limita a 1200px e 82% quality
+      // Reduz fotos de celular de ~5MB para ~200-400KB sem perda visual perceptível
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1200;
+        let { width: w, height: h } = img;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+          else       { w = Math.round(w * MAX / h); h = MAX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const compressed = canvas.toDataURL('image/jpeg', 0.82);
+        setImageBase64(compressed);
+        setPreviewUrl(compressed);
+      };
+      img.src = ev.target.result;
+    };
     reader.readAsDataURL(file);
   };
 
@@ -3574,7 +3594,6 @@ function App() {
 }
 
 window.onload = function() {
-  console.log('[GameOps] Iniciando React com Supabase...');
   ReactDOM.createRoot(document.getElementById("root")).render(<App />);
 };
 </script>
@@ -3683,7 +3702,6 @@ window.onload = function() {
 window.ativarNotificacoesFCM = async function(uid) {
   try {
     var permission = await Notification.requestPermission();
-    console.log('[Notificações] Permissão:', permission);
     return permission === 'granted' ? 'web-notifications-granted' : null;
   } catch(err) { console.error('[Notificações] Erro:', err); return null; }
 };
@@ -3692,7 +3710,6 @@ window.FCM_MESSAGES = {
   alertaRebaixamento:{ title:"⚠️ Missão Level-Up — Perigo de Rebaixamento!", body:"Você está há 1 dia sem cumprir sua meta e corre o risco de ser rebaixado amanhã.\n— Hebreus 12:1" },
   aposRebaixamento:  { title:"🔴 Missão Level-Up — Você foi rebaixado", body:"Você foi rebaixado de nível, mas isso não é o fim da sua jornada. Levanta e recomeça!\n— João 16:33 (NVI)" }
 };
-console.log('[GameOps] Pronto. Rodando 100% no Supabase.');
 </script>
 </body>
 </html>
