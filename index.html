@@ -19,8 +19,17 @@
     <meta name="theme-color" content="#0a0822">
 
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- ── Performance: preconnect para fontes e CDN externos ── -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="dns-prefetch" href="https://oyvvlbyxlaetlghzgjam.supabase.co">
+    <!-- ── React + ReactDOM (UMD) ── -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin></script><meta name="darkreader" content="2ebb456da760496d947363ddc2f6897a">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin></script>
+    <!-- ── Babel Standalone: transpila JSX no browser (dev/deploy simples).
+         Para produção de alta escala, migrar para Vite + build step
+         elimina este script (~360KB) e reduz TBT em ~1-3s em mobile. ── -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
@@ -124,6 +133,16 @@ body{background:var(--cor-fundo);color:var(--cor-texto);font-family:'Rajdhani',s
 .regente-star-1,.regente-star-2{font-size:9px;animation:rstar 2s ease-in-out infinite}
 .regente-star-2{animation-delay:.7s}
 .regente-text{letter-spacing:2px}
+
+/* ── Modo sem efeitos visuais (acessibilidade) ── */
+body.no-effects .scanline{display:none!important}
+body.no-effects *{animation:none!important;transition:none!important}
+body.no-effects .scanline{opacity:0}
+
+/* ── Toggle de efeitos no header ── */
+.effects-toggle{background:none;border:1px solid rgba(0,229,255,.2);border-radius:20px;color:#6a6a9a;font-family:'Orbitron',monospace;font-size:8px;letter-spacing:1px;padding:5px 10px;cursor:pointer;transition:all .2s;white-space:nowrap}
+.effects-toggle:hover{border-color:rgba(0,229,255,.5);color:var(--cor-destaque)}
+.effects-toggle.off{border-color:rgba(255,221,0,.3);color:#ffdd0088}
     </style>
 </head>
 <body>
@@ -395,8 +414,15 @@ function getEffectiveLevelInfo(userId) {
 }
 
 // ─── Supabase ────────────────────────────────────────────────────────────────
-// SEGURANÇA: Esta chave anon é pública por natureza. Proteja os dados
-// configurando Row Level Security (RLS) no painel do Supabase para cada tabela.
+// SEGURANÇA: Esta chave anon é pública por natureza.
+// ── Checklist de segurança recomendado no Supabase: ──────────────────────────
+// 1. RLS habilitado em TODAS as tabelas (users, submissions, missions, historico_pontos)
+// 2. Policy INSERT em submissions: auth.uid() = user_id  (usuário só insere o próprio)
+// 3. Policy UPDATE em users: auth.uid() = id  (usuário só edita o próprio perfil)
+// 4. Policy SELECT em missions: pública (read-only para todos)
+// 5. Points increment via DB Function/RPC com SECURITY DEFINER (já implementado via increment_points)
+// 6. Edge Function para validação server-side de pontuação (melhoria futura recomendada)
+// ─────────────────────────────────────────────────────────────────────────────
 const SUPABASE_URL = "https://oyvvlbyxlaetlghzgjam.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95dnZsYnl4bGFldGxnaHpnamFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2Mzc1NDksImV4cCI6MjA5MDIxMzU0OX0.4JpnIymqZOgNnw819I_o8qJq3BwOuvU4XLZ_w79Npqw";
 
@@ -876,6 +902,8 @@ async function loginUser(email, password) {
     );
     const data = await res.json();
     if (data.error) return { error: data.error };
+    // Grava sessão no window para validação defensiva de identidade
+    if (data && data.id) window.__mlup_session = data.id;
     return { user: data };
   } catch (e) {
     return { error: "Erro de conexão. Tente novamente." };
@@ -901,6 +929,86 @@ async function submitMission(userId, missionId, imageBase64) {
   const res = await fbPush("submissions", sub);
   const newSub = { ...sub, id: res.name };
   store.submissions = [...store.submissions, newSub]; notify(); return { submission: newSub };
+}
+
+// ─── GameOps: Conclusão direta de missão (sem foto) ─────────────────────────
+// Aprova a missão instantaneamente, sem necessidade de comprovante fotográfico.
+// Use: concluirMissao(userId, missionId)
+// Exemplo no card: onClick={() => concluirMissao(user.id, mission.id)}
+async function concluirMissao(userId, missionId) {
+  // ── Defesa: nunca processa sem userId válido (previne manipulação via console) ──
+  if (!userId || typeof userId !== "string" || userId.length < 3)
+    return { error: "Sessão inválida. Faça login novamente." };
+  // ── Defesa: garante que o userId é o próprio usuário logado ──
+  const _currentSession = window.__mlup_session;
+  if (_currentSession && _currentSession !== userId)
+    return { error: "Operação não permitida." };
+  if (isMissionLocked(userId, missionId))
+    return { error: "Você já cumpriu essa missão no período permitido." };
+
+  const mission = store.missions.find(m => m.id === missionId);
+  if (!mission) return { error: "Missão não encontrada." };
+
+  const pending = store.submissions.find(
+    s => s.userId === userId && s.missionId === missionId && s.status === "pending"
+  );
+  if (pending) {
+    const pendingDateBRT = pending.createdAt ? isoUtcToBRTDateStr(pending.createdAt) : "";
+    const bloqueiaHoje = mission.frequency === "daily" ? pendingDateBRT === todayStr() : true;
+    if (bloqueiaHoje) return { error: "Você já tem um envio aguardando validação para essa missão." };
+  }
+
+  const pts = mission.points || 0;
+  const today = todayStr();
+  const week  = weekStr();
+  const brt   = nowBRT();
+  const pad   = n => String(n).padStart(2, "0");
+  const createdAtBRT = `${brt.getFullYear()}-${pad(brt.getMonth()+1)}-${pad(brt.getDate())}T${pad(brt.getHours())}:${pad(brt.getMinutes())}:${pad(brt.getSeconds())}.000-03:00`;
+
+  // 1. Grava submission já aprovada (sem foto)
+  const sub = {
+    userId, missionId,
+    imageUrl: null,
+    status: "approved",
+    createdAt: createdAtBRT,
+    approvedDate: today,
+    approvedWeek: week,
+    approvedMonth: monthStr(),
+    approvedBiweekly: biweeklyStr()
+  };
+  const res = await fbPush("submissions", sub);
+  const newSub = { ...sub, id: res.name };
+  store.submissions = [...store.submissions, newSub];
+
+  // 2. Atualiza pontos e dados do usuário
+  const u = store.users.find(u => u.id === userId);
+  if (u) {
+    const dailyPoints = { ...(u.dailyPoints || {}), [today]: ((u.dailyPoints || {})[today] || 0) + pts };
+    const completed = (mission.frequency === "once" && !(u.completedMissions || []).includes(missionId))
+      ? [...(u.completedMissions || []), missionId]
+      : (u.completedMissions || []);
+    const newTotalPoints = u.points + pts;
+    const levelBefore = getLevelInfo(u.points).name;
+    const levelAfter  = getLevelInfo(newTotalPoints).name;
+    const promoted    = levelBefore !== levelAfter;
+    const patchData   = { completedMissions: completed, dailyPoints, lastActiveDay: today };
+    if (promoted) patchData.lastPromotionDay = today;
+
+    const _sbConcluir = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    await _sbConcluir.rpc('increment_points', { player_id: u.id, row_points: pts });
+    await fbPatch(`users/${u.id}`, patchData);
+
+    const updatedUser = { ...u, ...patchData, points: newTotalPoints };
+    store.users = store.users.map(uu => uu.id === u.id ? updatedUser : uu);
+    await registrarHistorico(u.id, "aprovacao", pts, mission.title, u.points);
+
+    if (mission.requiredLevel === "ANCIÃO" && u.regenteRevoked && !u.regenteReconquistado) {
+      await registrarMissaoReconquista(u.id, mission.id);
+    }
+  }
+
+  notify();
+  return { submission: newSub };
 }
 
 // ─── Sistema de Histórico de Pontos ────────────────────────
@@ -1414,6 +1522,8 @@ function MissionCard({ mission, user, onSubmit, isAdmin, onDelete }) {
   const [previewUrl,  setPreviewUrl]  = useState(null);
   const [msg,         setMsg]         = useState("");
   const [sending,     setSending]     = useState(false);
+  const [concluding,  setConcluding]  = useState(false);
+  const [concludeMsg, setConcludeMsg] = useState("");
   const [hovered,     setHovered]     = useState(false);
   const fileRef = useRef();
   const countdown = useCountdown();
@@ -1572,13 +1682,36 @@ function MissionCard({ mission, user, onSubmit, isAdmin, onDelete }) {
             </div>
           )}
           {!isAdmin && !isCompleted && !isPending && !isLocked && !isLevelLocked && !isDayLocked && (
-            <button className="btn btn-ghost" style={{fontSize:10, padding:"8px 16px"}} onClick={() => setExpanded(!expanded)}>
-              {expanded ? "FECHAR" : isRejected ? "REENVIAR COMPROVANTE" : "ENVIAR COMPROVANTE"}
-            </button>
+            <div style={{display:"flex", gap:8, flexWrap:"wrap"}}>
+              <button className="btn btn-green" style={{fontSize:10, padding:"8px 16px"}}
+                disabled={concluding}
+                onClick={async () => {
+                  if (concluding) return;
+                  setConcluding(true); setConcludeMsg("");
+                  const res = await concluirMissao(user.id, mission.id);
+                  setConcluding(false);
+                  if (res.error) { setConcludeMsg(res.error); }
+                  else { setConcludeMsg("✓ Missão concluída! +" + mission.points + " XP"); onSubmit && onSubmit(); }
+                }}>
+                {concluding ? <span className="spinner"/> : `✔ CONCLUIR +${mission.points} XP`}
+              </button>
+              <button className="btn btn-ghost" style={{fontSize:10, padding:"8px 16px"}} onClick={() => { setExpanded(!expanded); setConcludeMsg(""); }}>
+                {expanded ? "FECHAR" : isRejected ? "📷 REENVIAR FOTO" : "📷 ENVIAR FOTO"}
+              </button>
+            </div>
+          )}
+          {concludeMsg && !isCompleted && !isLocked && (
+            <div style={{marginTop:8, padding:"8px 14px",
+              background: concludeMsg.startsWith("✓") ? "rgba(0,255,68,.1)" : "rgba(255,23,68,.1)",
+              border: concludeMsg.startsWith("✓") ? "1px solid rgba(0,255,68,.35)" : "1px solid rgba(255,23,68,.35)",
+              borderRadius:3, color: concludeMsg.startsWith("✓") ? "#00ff44" : "#ff6090",
+              fontFamily:"Orbitron", fontSize:11, letterSpacing:1}}>
+              {concludeMsg}
+            </div>
           )}
           {!isAdmin && expanded && !isCompleted && !isPending && !isLocked && !isLevelLocked && !isDayLocked && (
             <div style={{marginTop:16, paddingTop:16, borderTop:"1px solid rgba(0,229,255,.2)", display:"flex", flexDirection:"column", gap:12}}>
-              <p style={{fontSize:12, color:"#6a6a9a"}}>Tire uma foto como prova de que cumpriu a missão. Um líder irá verificar e aprovar.</p>
+              <p style={{fontSize:12, color:"#6a6a9a"}}>Tire uma foto como prova adicional de que cumpriu a missão. Um líder irá verificar e aprovar.</p>
               <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}} onChange={handleFile} />
               <button className="btn btn-ghost" style={{fontSize:10}} onClick={() => fileRef.current.click()}>
                 📷 {imageBase64 ? "TROCAR FOTO" : "SELECIONAR FOTO"}
@@ -3538,6 +3671,15 @@ function App() {
   const [tick, setTick] = useState(0);
   const [loaded, setLoaded] = useState(false);
   const [dbError, setDbError] = useState(false);
+  const [profile, setProfile] = useState(null);
+  const [effectsOn, setEffectsOn] = useState(() => {
+    try { return localStorage.getItem('mlup_effects') !== 'off'; } catch(e) { return true; }
+  });
+
+  useEffect(() => {
+    document.body.classList.toggle('no-effects', !effectsOn);
+    try { localStorage.setItem('mlup_effects', effectsOn ? 'on' : 'off'); } catch(e) {}
+  }, [effectsOn]);
 
   useEffect(() => {
     // subscribeDB retorna cleanup() diretamente — o useEffect executa
@@ -3606,6 +3748,12 @@ function App() {
               <div style={{fontFamily:"Orbitron", fontSize:11, color:"#00ccff"}}>{currentUser.name}</div>
               <div style={{fontSize:11, color:"#ffdd00"}}>{isAdmin ? "👑 ADMIN" : `${currentUser.points} PTS`}</div>
             </div>
+            <button
+              className={`effects-toggle${effectsOn ? "" : " off"}`}
+              title={effectsOn ? "Desativar efeitos visuais" : "Ativar efeitos visuais"}
+              onClick={() => setEffectsOn(v => !v)}>
+              {effectsOn ? "✦ EFEITOS" : "○ EFEITOS"}
+            </button>
             <button className="btn btn-ghost" style={{fontSize:10, padding:"8px 14px"}} onClick={() => setUser(null)}>SAIR</button>
           </div>
         </div>
