@@ -773,8 +773,11 @@ async function checkLoginBonus(userId) {
   const novosPontos = u.points + totalBonus;
   const dailyPoints = { ...(u.dailyPoints || {}), [today]: ((u.dailyPoints || {})[today] || 0) + totalBonus };
 
+  // Incrementa pontos via RPC atômica (evita race condition entre usuários simultâneos)
+  const _sbBonus = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  await _sbBonus.rpc('increment_points', { player_id: userId, row_points: totalBonus });
+  // Atualiza demais campos sem sobrescrever pontos
   await fbPatch(`users/${userId}`, {
-    points: novosPontos,
     dailyPoints,
     lastLoginBonus: today,
     streakDays: novoStreak,
@@ -948,10 +951,13 @@ async function reviewSubmission(submissionId, status) {
       const levelBefore = getLevelInfo(u.points).name;
       const levelAfter  = getLevelInfo(newTotalPoints).name;
       const promoted = levelBefore !== levelAfter;
-      const patchData = { points: newTotalPoints, completedMissions: completed, dailyPoints, lastActiveDay: today };
+      const patchData = { completedMissions: completed, dailyPoints, lastActiveDay: today };
       // Grava lastPromotionDay — checkDemotion não cobra meta no dia que subiu de nível
       if (promoted) patchData.lastPromotionDay = today;
-      const updatedUser = { ...u, ...patchData };
+      const updatedUser = { ...u, ...patchData, points: newTotalPoints };
+      // Incrementa pontos via RPC atômica (evita race condition)
+      const _sbReview = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      await _sbReview.rpc('increment_points', { player_id: u.id, row_points: pts });
       await fbPatch(`users/${u.id}`, patchData);
       store.users = store.users.map(uu => uu.id===u.id ? updatedUser : uu);
       await registrarHistorico(u.id, "aprovacao", pts, mission?.title || "Missão", u.points);
@@ -973,8 +979,9 @@ async function revokeSubmission(submissionId) {
   if (u && m) {
     const pts = Math.abs(m.points);
     const newPoints = Math.max(0, u.points - pts);
-    // 1. Desconta os pontos diretamente no usuario
-    await fbPatch(`users/${u.id}`, { points: newPoints });
+    // 1. Desconta pontos via RPC atômica (evita race condition)
+    const _sbRevoke = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    await _sbRevoke.rpc('increment_points', { player_id: u.id, row_points: -pts });
     store.users = store.users.map(uu => uu.id === u.id ? { ...uu, points: newPoints } : uu);
     // 2. Registra no historico de pontos (extrato)
     await registrarHistorico(u.id, "estorno", -pts, `Estorno: ${m.title}`, u.points);
@@ -1115,7 +1122,10 @@ async function executarCheckDemotion(userId) {
     }
     const prevLevel = levels[idx-1];
     const newPoints = DEMOTION_TARGET[lvl.name] !== undefined ? DEMOTION_TARGET[lvl.name] : (LEVEL_MIN_POINTS[prevLevel] || 0);
-    await fbPatch(`users/${userId}`, { points: newPoints, missedDays:0, lastActiveDay: today, lastDemotionDay: today });
+    // Ajusta pontos para o teto do nível anterior via RPC atômica
+    const _sbDemote = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    await _sbDemote.rpc('increment_points', { player_id: userId, row_points: newPoints - u.points });
+    await fbPatch(`users/${userId}`, { missedDays:0, lastActiveDay: today, lastDemotionDay: today });
     store.users = store.users.map(uu => uu.id===userId ? { ...uu, points: newPoints, missedDays:0, lastActiveDay: today, lastDemotionDay: today } : uu);
     await registrarHistorico(userId, "rebaixamento", newPoints - u.points, `Rebaixamento: ${lvl.name} → ${prevLevel}`, u.points);
     // Revoga o Regente do Equilíbrio se o usuário o tinha
@@ -2775,7 +2785,9 @@ async function corrigirPontosUsuario(userId, delta, motivo) {
   const u = store.users.find(u => u.id === userId);
   if (!u) return { error: "Usuário não encontrado" };
   const newPoints = Math.max(0, u.points + delta);
-  await fbPatch(`users/${userId}`, { points: newPoints });
+  // Aplica correção via RPC atômica para evitar sobrescrita de pontos concorrentes
+  const _sbCorr = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  await _sbCorr.rpc('increment_points', { player_id: userId, row_points: delta });
   store.users = store.users.map(uu => uu.id === userId ? { ...uu, points: newPoints } : uu);
   await registrarHistorico(userId, "correcao", delta, motivo || "Correção manual pelo admin", u.points);
   notify();
