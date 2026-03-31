@@ -434,6 +434,61 @@ function getEffectiveLevelInfo(userId) {
 const SUPABASE_URL = "https://oyvvlbyxlaetlghzgjam.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95dnZsYnl4bGFldGxnaHpnamFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2Mzc1NDksImV4cCI6MjA5MDIxMzU0OX0.4JpnIymqZOgNnw819I_o8qJq3BwOuvU4XLZ_w79Npqw";
 
+// ── MODO ACAMPAMENTO (Acampa Seed 2026) ──────────────────────────────────────
+// Durante o período do acampamento:
+//   • Streaks não resetam por falta de login
+//   • Rebaixamentos são completamente suspensos
+//   • O painel de Gincana fica disponível para o ADM
+const ACAMPA_DATES = { start: '2026-03-31', end: '2026-05-03' };
+
+function isAcampamentoAtivo() {
+  try {
+    const hoje = new Date().toISOString().split('T')[0];
+    return hoje >= ACAMPA_DATES.start && hoje <= ACAMPA_DATES.end;
+  } catch(e) { return false; }
+}
+
+// Pontuação de cada scan de QR Code da Gincana
+const GINCANA_PONTOS_SCAN = 50;
+
+// Equipes reais do Acampa Seed 2026
+const GINCANA_EQUIPES = ['lion', 'sentinel', 'prophetic', 'holy'];
+
+const GINCANA_META = {
+  lion:      { nome: 'Lion Heart',       cor: '#ff3333', emoji: '🔴', lideres: 'Jamile & Edu',              membros: ['Tyci','Raquel Soares','Emile','Gabriel','Samuel Wesley'] },
+  sentinel:  { nome: 'Sentinel Bulls',   cor: '#9b30ff', emoji: '🟣', lideres: 'Rebeca & Raquel',           membros: ['Thainá','Amanda','David','Alexandre','Asafe'] },
+  prophetic: { nome: 'Prophetic Eagles', cor: '#00aaff', emoji: '🔵', lideres: 'Yan & Silas',               membros: ['Letícia','Bruna','Samuel','Nicolas','Rodrigo'] },
+  holy:      { nome: 'Holy Warriors',    cor: '#e0e0e0', emoji: '⚪', lideres: 'Matheus Saymon & George',   membros: ['Duda Maria','Suellen','Elion','Vinicius','Matheus'] },
+};
+
+// Credita pontos em massa para todos os membros de uma equipe
+async function creditarEquipe(equipeLeaderId, motivo) {
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const store = getStore();
+  const lider = store.users.find(u => u.id === equipeLeaderId);
+  if (!lider || !lider.equipeId) return { ok: false, erro: 'Líder sem equipe vinculada.' };
+  const membros = store.users.filter(u => u.equipeId === lider.equipeId && u.role !== 'admin');
+  if (!membros.length) return { ok: false, erro: 'Nenhum membro nessa equipe.' };
+  const pts = GINCANA_PONTOS_SCAN;
+  const resultados = await Promise.allSettled(membros.map(async (m) => {
+    await sb.rpc('increment_points', { player_id: m.id, row_points: pts });
+    await registrarHistorico(m.id, 'gincana', pts, motivo || `Gincana – Equipe ${lider.equipeId}`, m.points);
+    await fbPatch(`users/${m.id}`, {});
+  }));
+  const ok = resultados.filter(r => r.status === 'fulfilled').length;
+  return { ok: true, creditados: ok, total: membros.length, equipe: lider.equipeId };
+}
+
+// Atribui um jovem a uma equipe da Gincana
+async function atribuirEquipe(userId, equipeId) {
+  if (!GINCANA_EQUIPES.includes(equipeId)) return { ok: false, erro: 'Equipe inválida.' };
+  await fbPatch(`users/${userId}`, { equipeId });
+  const store = getStore();
+  store.users = store.users.map(u => u.id === userId ? { ...u, equipeId } : u);
+  notify();
+  return { ok: true };
+}
+
 async function sbQuery(table, filters={}, limit=1000) {
   try {
     let url=`${SUPABASE_URL}/rest/v1/${table}?select=*&limit=${limit}`;
@@ -1206,6 +1261,18 @@ function temPendenteDoDia(userId, dateStr) {
 }
 
 async function executarCheckDemotion(userId) {
+  // ── MODO ACAMPAMENTO: suspende todas as penalidades durante o evento ──────
+  if (isAcampamentoAtivo()) {
+    const _today = todayStr();
+    const _u0 = store.users.find(u => u.id===userId);
+    if (_u0 && _u0.lastActiveDay !== _today) {
+      await fbPatch(`users/${userId}`, { lastActiveDay: _today, missedDays: 0 });
+      store.users = store.users.map(uu => uu.id===userId ? { ...uu, lastActiveDay: _today, missedDays: 0 } : uu);
+      notify();
+    }
+    return { demoted: false, reason: 'acampamento_freeze' };
+  }
+  // ─────────────────────────────────────────────────────────────────────────
   const u = store.users.find(u => u.id===userId); if (!u || u.role==="admin") return;
   const lvl = getLevelInfo(u.points);
   const goal = LEVEL_DAILY_GOAL[lvl.name] || 0;
@@ -3472,6 +3539,397 @@ function ExportarUsuarios({ users }) {
   );
 }
 
+// ── Gincana Admin ─────────────────────────────────────────────────────────────
+// ── Mapa QR Code → Equipe (configurável pelo ADM) ────────────────────────────
+// Chave = código exato que vem no QR; Valor = letra da equipe ('A','B','C','D')
+// O ADM configura isso uma vez antes do acampamento.
+// ── Gincana: persistência no Supabase (tabela gincana_config) ────────────────
+// Estrutura esperada: id TEXT PK, valor JSONB
+// Linhas fixas:  'placar'  → {A:0,B:0,C:0,D:0}
+//                'log'     → [{ts,equipe,pontos,descricao}]
+//                'qr_map'  → {"TEXTO_QR":"A", ...}
+const _sbG = () => window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+async function gincanaGet(chave) {
+  try {
+    const { data, error } = await _sbG().from("gincana_config").select("valor").eq("id", chave).single();
+    if (error || !data) return null;
+    return data.valor;
+  } catch(e) { return null; }
+}
+
+async function gincanaSet(chave, valor) {
+  try {
+    await _sbG().from("gincana_config").upsert({ id: chave, valor }, { onConflict: "id" });
+  } catch(e) { console.error("gincanaSet erro:", e); }
+}
+
+function GincanaAdmin({ users }) {
+  const COR_EQUIPE = { A:"#00e5ff", B:"#ff4dbb", C:"#00ff44", D:"#ffd700" };
+
+  const [placar,    setPlacar]    = useState({A:0,B:0,C:0,D:0});
+  const [log,       setLog]       = useState([]);
+  const [qrMap,     setQrMap]     = useState({});
+  const [carregando, setCarregando] = useState(true);
+
+  // Scanner
+  const [qrInput,   setQrInput]   = useState("");
+  const [motivo,    setMotivo]    = useState("");
+  const [qrMsg,     setQrMsg]     = useState(null);
+  const [pts,       setPts]       = useState(GINCANA_PONTOS_SCAN);
+  const [salvando,  setSalvando]  = useState(false);
+
+  // Config QR → Equipe
+  const [novoQr,    setNovoQr]    = useState("");
+  const [novoEq,    setNovoEq]    = useState("A");
+
+  // Creditagem manual
+  const [manualEq,  setManualEq]  = useState("A");
+  const [manualPts, setManualPts] = useState(GINCANA_PONTOS_SCAN);
+  const [manualMot, setManualMot] = useState("");
+
+  const [abaGinc,   setAbaGinc]  = useState("scanner");
+
+  // ── Carregar dados do Supabase ──
+  async function carregarTudo() {
+    setCarregando(true);
+    const [p, l, q] = await Promise.all([
+      gincanaGet("placar"),
+      gincanaGet("log"),
+      gincanaGet("qr_map"),
+    ]);
+    if (p) setPlacar(p);
+    if (l) setLog(Array.isArray(l) ? l : []);
+    if (q) setQrMap(q);
+    setCarregando(false);
+  }
+
+  // Polling a cada 5 segundos para sincronizar os 2 celulares
+  useEffect(() => {
+    carregarTudo();
+    const intervalo = setInterval(carregarTudo, 5000);
+    return () => clearInterval(intervalo);
+  }, []);
+
+  const maxPts = Math.max(...Object.values(placar), 1);
+  const freezeAtivo = isAcampamentoAtivo();
+
+  // ── Creditar equipe (grava no Supabase) ──
+  async function creditar(equipe, pontos, descricao) {
+    setSalvando(true);
+    // Lê placar fresco antes de somar (evita conflito entre 2 celulares)
+    const placarAtual = (await gincanaGet("placar")) || placar;
+    const novoPlacar  = { ...placarAtual, [equipe]: (placarAtual[equipe]||0) + pontos };
+
+    const logAtual = (await gincanaGet("log")) || [];
+    const novoLog  = [
+      { ts: new Date().toLocaleString("pt-BR"), equipe, pontos, descricao },
+      ...(Array.isArray(logAtual) ? logAtual : [])
+    ].slice(0, 200);
+
+    await Promise.all([
+      gincanaSet("placar", novoPlacar),
+      gincanaSet("log",    novoLog),
+    ]);
+    setPlacar(novoPlacar);
+    setLog(novoLog);
+    setSalvando(false);
+  }
+
+  // ── Processar scan de QR ──
+  async function handleScan() {
+    const val = qrInput.trim();
+    if (!val) return;
+    const equipe = qrMap[val];
+    if (!equipe) {
+      setQrMsg({ ok: false, texto: `QR "${val}" não mapeado. Configure na aba CONFIG QR.` });
+      return;
+    }
+    const desc = motivo || `Scan QR – Líder equipe ${equipe}`;
+    await creditar(equipe, pts, desc);
+    setQrMsg({ ok: true, texto: `✓ +${pts} pts creditados para Equipe ${equipe}!` });
+    setQrInput("");
+    setMotivo("");
+    setTimeout(() => setQrMsg(null), 4000);
+  }
+
+  // ── Creditagem manual ──
+  async function handleManual() {
+    if (!manualPts || manualPts <= 0) return;
+    const desc = manualMot || `Creditagem manual – Equipe ${manualEq}`;
+    await creditar(manualEq, Number(manualPts), desc);
+    setQrMsg({ ok: true, texto: `✓ +${manualPts} pts creditados para Equipe ${manualEq}!` });
+    setManualMot("");
+    setTimeout(() => setQrMsg(null), 4000);
+  }
+
+  // ── Config QR Map ──
+  async function handleAddQr() {
+    if (!novoQr.trim()) return;
+    const novo = { ...qrMap, [novoQr.trim()]: novoEq };
+    setQrMap(novo);
+    await gincanaSet("qr_map", novo);
+    setNovoQr("");
+  }
+  async function handleRemoveQr(key) {
+    const novo = { ...qrMap };
+    delete novo[key];
+    setQrMap(novo);
+    await gincanaSet("qr_map", novo);
+  }
+
+  // ── Zerar placar ──
+  async function handleZerar() {
+    if (!window.confirm("Zerar o placar da Gincana? Essa ação não pode ser desfeita.")) return;
+    const zero = {A:0,B:0,C:0,D:0};
+    await gincanaSet("placar", zero);
+    setPlacar(zero);
+  }
+
+  return (
+    <div style={{display:"flex", flexDirection:"column", gap:20}}>
+
+      {/* ── Banner modo acampamento ── */}
+      <div style={{padding:"12px 16px", borderRadius:4,
+        background: freezeAtivo ? "rgba(0,255,68,.07)" : "rgba(255,221,0,.07)",
+        border:`1px solid ${freezeAtivo?"rgba(0,255,68,.3)":"rgba(255,221,0,.3)"}`,
+        display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, flexWrap:"wrap"}}>
+        <div style={{display:"flex", alignItems:"center", gap:12}}>
+          <span style={{fontSize:20}}>{freezeAtivo?"🏕":"⏳"}</span>
+          <div>
+            <div style={{fontFamily:"Orbitron", fontSize:10, letterSpacing:1,
+              color: freezeAtivo?"#00ff44":"#ffdd00"}}>
+              {freezeAtivo?"MODO ACAMPAMENTO ATIVO — FREEZE ON":"MODO ACAMPAMENTO INATIVO"}
+            </div>
+            <div style={{fontSize:11, color:"#9090bb", marginTop:2}}>
+              {freezeAtivo
+                ? "Placar sincronizado via Supabase — ambos os celulares em tempo real."
+                : `Período configurado: ${ACAMPA_DATES.start} → ${ACAMPA_DATES.end}`}
+            </div>
+          </div>
+        </div>
+        <div style={{display:"flex", alignItems:"center", gap:8}}>
+          {salvando && <span style={{fontFamily:"Orbitron", fontSize:9, color:"#ffdd00", letterSpacing:1}}>💾 SALVANDO...</span>}
+          {carregando && !salvando && <span style={{fontFamily:"Orbitron", fontSize:9, color:"#00e5ff", letterSpacing:1}}>↻ SYNC...</span>}
+          <button className="btn btn-ghost" style={{fontSize:9, padding:"5px 12px"}} onClick={carregarTudo}>↺ ATUALIZAR</button>
+        </div>
+      </div>
+
+      {/* ── Placar neon ── */}
+      <div className="panel panel-cyan">
+        <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16}}>
+          <div style={{fontFamily:"Orbitron", fontSize:12, letterSpacing:2, color:"#00e5ff"}}>🏆 PLACAR</div>
+          <button className="btn btn-red" style={{fontSize:9, padding:"5px 12px"}} onClick={handleZerar}>↺ ZERAR</button>
+        </div>
+        <div style={{display:"flex", flexDirection:"column", gap:14}}>
+          {[...GINCANA_EQUIPES]
+            .sort((a,b) => placar[b] - placar[a])
+            .map((eq, i) => {
+              const p   = placar[eq] || 0;
+              const pct = Math.round((p / maxPts) * 100);
+              const cor = COR_EQUIPE[eq];
+              const medalhas = ["🥇","🥈","🥉","4º"];
+              return (
+                <div key={eq}>
+                  <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5}}>
+                    <div style={{display:"flex", alignItems:"center", gap:8}}>
+                      <span style={{fontSize:15, minWidth:24}}>{medalhas[i]}</span>
+                      <span style={{fontFamily:"Orbitron", fontSize:15, fontWeight:900, color:cor}}>EQUIPE {eq}</span>
+                    </div>
+                    <span style={{fontFamily:"Orbitron", fontSize:20, fontWeight:900, color:cor,
+                      textShadow:`0 0 16px ${cor}`}}>
+                      {p.toLocaleString("pt-BR")} <span style={{fontSize:11}}>pts</span>
+                    </span>
+                  </div>
+                  <div style={{height:16, background:"rgba(255,255,255,.05)", borderRadius:2,
+                    overflow:"hidden", border:`1px solid ${cor}33`}}>
+                    <div style={{height:"100%", width:`${pct||0}%`,
+                      background:`linear-gradient(90deg,${cor}66,${cor})`,
+                      boxShadow:`0 0 10px ${cor}`, borderRadius:2, transition:"width .7s ease"}}/>
+                  </div>
+                </div>
+              );
+            })}
+        </div>
+      </div>
+
+      {/* ── Sub-abas ── */}
+      <div style={{display:"flex", gap:0, borderBottom:"1px solid rgba(0,229,255,.15)", flexWrap:"wrap"}}>
+        {[["scanner","📲 SCANNER QR"],["manual","✏️ MANUAL"],["config","⚙️ CONFIG QR"],["log","📋 LOG"]].map(([k,l]) => (
+          <button key={k} onClick={()=>setAbaGinc(k)}
+            style={{fontFamily:"Orbitron", fontSize:10, letterSpacing:1, padding:"8px 16px",
+              background:"none", border:"none", borderBottom:`2px solid ${abaGinc===k?"#00e5ff":"transparent"}`,
+              color: abaGinc===k?"#00e5ff":"#6a6a9a", cursor:"pointer", transition:"all .2s"}}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Feedback global ── */}
+      {qrMsg && (
+        <div style={{padding:"10px 14px", borderRadius:3,
+          background: qrMsg.ok?"rgba(0,255,68,.1)":"rgba(255,23,68,.1)",
+          border:`1px solid ${qrMsg.ok?"rgba(0,255,68,.35)":"rgba(255,23,68,.35)"}`,
+          color: qrMsg.ok?"#00ff44":"#ff6090",
+          fontFamily:"Orbitron", fontSize:12, letterSpacing:.5}}>
+          {qrMsg.texto}
+        </div>
+      )}
+
+      {/* ── Aba: Scanner QR ── */}
+      {abaGinc==="scanner" && (
+        <div className="panel" style={{display:"flex", flexDirection:"column", gap:12}}>
+          <div style={{fontSize:13, color:"#9090bb"}}>
+            Escaneie o QR do crachá do líder — o código será lido e a equipe creditada automaticamente.
+          </div>
+          <input className="input" autoFocus
+            placeholder="Cole aqui o conteúdo do QR Code..."
+            value={qrInput}
+            onChange={e => setQrInput(e.target.value)}
+            onKeyDown={e => e.key==="Enter" && handleScan()}
+          />
+          <div style={{display:"flex", gap:10, alignItems:"center", flexWrap:"wrap"}}>
+            <div style={{flex:1, minWidth:160}}>
+              <div style={{fontSize:11, color:"#6a6a9a", marginBottom:4, fontFamily:"Orbitron", letterSpacing:1}}>PONTOS</div>
+              <input className="input" type="number" min="1" value={pts}
+                onChange={e=>setPts(Number(e.target.value))} style={{fontSize:14}}/>
+            </div>
+            <div style={{flex:2, minWidth:200}}>
+              <div style={{fontSize:11, color:"#6a6a9a", marginBottom:4, fontFamily:"Orbitron", letterSpacing:1}}>MOTIVO (opcional)</div>
+              <input className="input" placeholder="ex: Devocional Manhã Dia 1"
+                value={motivo} onChange={e=>setMotivo(e.target.value)}/>
+            </div>
+          </div>
+          <button className="btn btn-cyan" style={{fontSize:11}} disabled={!qrInput.trim()} onClick={handleScan}>
+            ⚡ PROCESSAR QR E CREDITAR EQUIPE
+          </button>
+          {Object.keys(qrMap).length===0 && (
+            <div style={{fontSize:12, color:"#ffdd00", padding:"8px 12px",
+              background:"rgba(255,221,0,.07)", border:"1px solid rgba(255,221,0,.2)", borderRadius:3}}>
+              ⚠️ Nenhum QR mapeado ainda. Vá na aba <strong>CONFIG QR</strong> para vincular cada código à sua equipe.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Aba: Creditagem Manual ── */}
+      {abaGinc==="manual" && (
+        <div className="panel" style={{display:"flex", flexDirection:"column", gap:12}}>
+          <div style={{fontSize:13, color:"#9090bb"}}>Crédito direto por equipe, sem QR Code.</div>
+          <div style={{display:"flex", gap:8, flexWrap:"wrap"}}>
+            {GINCANA_EQUIPES.map(eq => (
+              <button key={eq} onClick={()=>setManualEq(eq)}
+                style={{fontFamily:"Orbitron", fontSize:13, fontWeight:900, padding:"10px 20px",
+                  border:`2px solid ${manualEq===eq?COR_EQUIPE[eq]:COR_EQUIPE[eq]+"44"}`,
+                  borderRadius:3, background: manualEq===eq?`${COR_EQUIPE[eq]}22`:"transparent",
+                  color: manualEq===eq?COR_EQUIPE[eq]:"#6a6a9a", cursor:"pointer", transition:"all .2s",
+                  boxShadow: manualEq===eq?`0 0 12px ${COR_EQUIPE[eq]}66`:"none"}}>
+                EQUIPE {eq}
+              </button>
+            ))}
+          </div>
+          <div style={{display:"flex", gap:10, flexWrap:"wrap"}}>
+            <div style={{flex:1, minWidth:120}}>
+              <div style={{fontSize:11, color:"#6a6a9a", marginBottom:4, fontFamily:"Orbitron", letterSpacing:1}}>PONTOS</div>
+              <input className="input" type="number" min="1" value={manualPts}
+                onChange={e=>setManualPts(e.target.value)}/>
+            </div>
+            <div style={{flex:2, minWidth:200}}>
+              <div style={{fontSize:11, color:"#6a6a9a", marginBottom:4, fontFamily:"Orbitron", letterSpacing:1}}>MOTIVO</div>
+              <input className="input" placeholder="ex: Prova de bíblia – Dia 2"
+                value={manualMot} onChange={e=>setManualMot(e.target.value)}
+                onKeyDown={e=>e.key==="Enter"&&handleManual()}/>
+            </div>
+          </div>
+          <button className="btn btn-cyan" style={{fontSize:11}} onClick={handleManual}
+            disabled={!manualPts||manualPts<=0}>
+            ⚡ CREDITAR EQUIPE {manualEq} +{manualPts} pts
+          </button>
+        </div>
+      )}
+
+      {/* ── Aba: Config QR ── */}
+      {abaGinc==="config" && (
+        <div className="panel" style={{display:"flex", flexDirection:"column", gap:16}}>
+          <div style={{fontSize:13, color:"#9090bb"}}>
+            Vincule o conteúdo exato de cada QR Code à sua equipe. O QR do crachá deve conter apenas o texto cadastrado aqui.
+          </div>
+          <div style={{display:"flex", gap:8, flexWrap:"wrap", alignItems:"flex-end"}}>
+            <div style={{flex:2, minWidth:180}}>
+              <div style={{fontSize:11, color:"#6a6a9a", marginBottom:4, fontFamily:"Orbitron", letterSpacing:1}}>TEXTO DO QR CODE</div>
+              <input className="input" placeholder="ex: LIDER_EQUIPE_A"
+                value={novoQr} onChange={e=>setNovoQr(e.target.value)}
+                onKeyDown={e=>e.key==="Enter"&&handleAddQr()}/>
+            </div>
+            <div style={{flex:1, minWidth:100}}>
+              <div style={{fontSize:11, color:"#6a6a9a", marginBottom:4, fontFamily:"Orbitron", letterSpacing:1}}>EQUIPE</div>
+              <select className="input" value={novoEq} onChange={e=>setNovoEq(e.target.value)}
+                style={{cursor:"pointer"}}>
+                {GINCANA_EQUIPES.map(eq=><option key={eq} value={eq}>Equipe {eq}</option>)}
+              </select>
+            </div>
+            <button className="btn btn-green" style={{fontSize:10, padding:"10px 16px", flexShrink:0}}
+              onClick={handleAddQr} disabled={!novoQr.trim()}>
+              + ADICIONAR
+            </button>
+          </div>
+          {Object.keys(qrMap).length===0
+            ? <div style={{color:"#6a6a9a", fontSize:13, textAlign:"center", padding:20}}>Nenhum QR cadastrado ainda.</div>
+            : (
+              <table style={{width:"100%", borderCollapse:"collapse", fontSize:13}}>
+                <thead>
+                  <tr style={{borderBottom:"1px solid rgba(0,229,255,.15)"}}>
+                    {["QR CODE (TEXTO)","EQUIPE",""].map(h=>(
+                      <th key={h} style={{fontFamily:"Orbitron", fontSize:9, letterSpacing:1,
+                        color:"#6a6a9a", padding:"6px 10px", textAlign:"left"}}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(qrMap).map(([k,v])=>(
+                    <tr key={k} style={{borderBottom:"1px solid rgba(255,255,255,.04)"}}>
+                      <td style={{padding:"8px 10px", color:"#d0d8ff", fontFamily:"monospace", fontSize:12}}>{k}</td>
+                      <td style={{padding:"8px 10px", fontFamily:"Orbitron", fontWeight:900, fontSize:13,
+                        color:COR_EQUIPE[v]}}>{v}</td>
+                      <td style={{padding:"8px 10px"}}>
+                        <button className="btn btn-red" style={{fontSize:9, padding:"4px 10px"}}
+                          onClick={()=>handleRemoveQr(k)}>✕</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+        </div>
+      )}
+
+      {/* ── Aba: Log ── */}
+      {abaGinc==="log" && (
+        <div className="panel" style={{display:"flex", flexDirection:"column", gap:10}}>
+          {log.length===0
+            ? <div style={{color:"#6a6a9a", fontSize:13, textAlign:"center", padding:20}}>Nenhum evento registrado ainda.</div>
+            : log.map((e,i)=>(
+              <div key={i} style={{display:"flex", justifyContent:"space-between", alignItems:"center",
+                padding:"8px 12px", borderRadius:3, background:"rgba(255,255,255,.03)",
+                border:"1px solid rgba(255,255,255,.06)", flexWrap:"wrap", gap:6}}>
+                <div>
+                  <span style={{fontFamily:"Orbitron", fontSize:12, fontWeight:900,
+                    color:COR_EQUIPE[e.equipe]}}>EQUIPE {e.equipe}</span>
+                  <span style={{fontSize:11, color:"#9090bb", marginLeft:10}}>{e.descricao}</span>
+                </div>
+                <div style={{display:"flex", alignItems:"center", gap:12}}>
+                  <span style={{fontFamily:"Orbitron", fontSize:13, color:"#00ff44"}}>+{e.pontos}</span>
+                  <span style={{fontSize:10, color:"#6a6a9a"}}>{e.ts}</span>
+                </div>
+              </div>
+            ))}
+        </div>
+      )}
+
+    </div>
+  );
+}
+
 function AdminDashboard({ adminUser }) {
   const [tab, setTab]           = useState("validations");
   const [storeData, setStoreData] = useState(getStore());
@@ -3555,6 +4013,7 @@ function AdminDashboard({ adminUser }) {
           ["new",         "+ NOVA MISSÃO"],
           ["ferramentas",  "FERRAMENTAS"],
           ["usuarios",     "USUÁRIOS"],
+          ["gincana",      "🏕 GINCANA"],
         ].map(([k,l]) => (
           <button key={k}
             className={`nav-btn ${tab===k ? (k==="new" ? "active-yellow" : "active") : ""}`}
@@ -3632,6 +4091,9 @@ function AdminDashboard({ adminUser }) {
       )}
       {tab==="usuarios" && (
         <ExportarUsuarios users={storeData.users} />
+      )}
+      {tab==="gincana" && (
+        <GincanaAdmin users={storeData.users} />
       )}
       {preview && (
         <div style={{position:"fixed", inset:0, background:"rgba(0,0,0,.92)", display:"flex",
