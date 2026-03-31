@@ -418,7 +418,9 @@ async function sbInsert(table,data) {
 }
 async function sbUpdate(table,id,data) {
   try {
-    const r=await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`,{method:"PATCH",headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,"Content-Type":"application/json"},body:JSON.stringify(data)});
+    // "Prefer":"return=minimal" é necessário para que campos null sejam enviados ao banco
+    // Sem esse header o Supabase REST ignora campos null no PATCH
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`,{method:"PATCH",headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,"Content-Type":"application/json","Prefer":"return=minimal"},body:JSON.stringify(data)});
     if(!r.ok){const res=await r.json();console.error('[Supabase] Erro ao atualizar',table,id,res);}
   } catch(e){console.error('[Supabase] Falha de rede em sbUpdate:',e);}
 }
@@ -434,7 +436,7 @@ async function sbUpsert(table,data) {
     if(!r.ok){const res=await r.json();console.error('[Supabase] Erro ao salvar em',table,res);}
   } catch(e){console.error('[Supabase] Falha de rede em sbUpsert:',e);}
 }
-const CAMEL_SNAKE={desc:"description",streakDays:"streak_days",streakRecord:"streak_record",missedDays:"missed_days",lastActiveDay:"last_active_day",lastLoginBonus:"last_login_bonus",lastDemotionDay:"last_demotion_day",lastPromotionDay:"last_promotion_day",lastDivergenciaCheck:"last_divergencia_check",dailyPoints:"daily_points",completedMissions:"completed_missions",regenteRevoked:"regente_revoked",regenteReconquistado:"regente_reconquistado",regenteReconquistaMissoes:"regente_reconquista_missoes",fcmToken:"fcm_token",fullName:"full_name",imageUrl:"image_url",imageBase64:"image_base64",userId:"user_id",missionId:"mission_id",createdAt:"created_at",pontosAntes:"pontos_antes",pontosDepois:"pontos_depois",approvedDate:"approved_date",approvedWeek:"approved_week",approvedMonth:"approved_month",approvedBiweekly:"approved_biweekly",requiredLevel:"required_level",allowedDays:"allowed_days"};
+const CAMEL_SNAKE={streakDays:"streak_days",streakRecord:"streak_record",missedDays:"missed_days",lastActiveDay:"last_active_day",lastLoginBonus:"last_login_bonus",lastDemotionDay:"last_demotion_day",lastPromotionDay:"last_promotion_day",lastDivergenciaCheck:"last_divergencia_check",dailyPoints:"daily_points",completedMissions:"completed_missions",regenteRevoked:"regente_revoked",regenteReconquistado:"regente_reconquistado",regenteReconquistaMissoes:"regente_reconquista_missoes",fcmToken:"fcm_token",fullName:"full_name",imageUrl:"image_url",imageBase64:"image_base64",userId:"user_id",missionId:"mission_id",createdAt:"created_at",pontosAntes:"pontos_antes",pontosDepois:"pontos_depois",approvedDate:"approved_date",approvedWeek:"approved_week",approvedMonth:"approved_month",approvedBiweekly:"approved_biweekly",requiredLevel:"required_level",allowedDays:"allowed_days"};
 const SNAKE_CAMEL=Object.fromEntries(Object.entries(CAMEL_SNAKE).map(([c,s])=>[s,c]));
 const TABLE_MAP={users:"users",submissions:"submissions",missions:"missions",historico_pontos:"historico_pontos",alertas_divergencia:"alertas_divergencia"};
 function toSnake(data){const s={};for(const[k,v]of Object.entries(data))s[CAMEL_SNAKE[k]||k]=v;return s;}
@@ -551,9 +553,9 @@ async function loadFromSupabase() {
     ]);
     let users = usersRaw ? Object.entries(usersRaw).map(([id,v]) => ({...v, id})) : [];
     if (!users.find(u => u.id === "admin")) {
-      const admin = { id:"admin", name:"Admin", email:"admin@church.com", password:"admin123", role:"admin", points:0, completedMissions:[] };
-      await fbSet("users/admin", admin);
-      users = [admin, ...users];
+      // Admin já existe no banco — não recria nem expõe senha no frontend
+      // Se precisar recriar, faça diretamente pelo SQL Editor do Supabase
+      console.warn("[GameOps] Admin não encontrado no banco. Crie manualmente via SQL Editor.");
     }
     let submissions = subsRaw ? Object.entries(subsRaw).map(([id,v]) => ({...v, id})) : [];
     let missions;
@@ -773,11 +775,8 @@ async function checkLoginBonus(userId) {
   const novosPontos = u.points + totalBonus;
   const dailyPoints = { ...(u.dailyPoints || {}), [today]: ((u.dailyPoints || {})[today] || 0) + totalBonus };
 
-  // Incrementa pontos via RPC atômica (evita race condition entre usuários simultâneos)
-  const _sbBonus = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  await _sbBonus.rpc('increment_points', { player_id: userId, row_points: totalBonus });
-  // Atualiza demais campos sem sobrescrever pontos
   await fbPatch(`users/${userId}`, {
+    points: novosPontos,
     dailyPoints,
     lastLoginBonus: today,
     streakDays: novoStreak,
@@ -951,13 +950,10 @@ async function reviewSubmission(submissionId, status) {
       const levelBefore = getLevelInfo(u.points).name;
       const levelAfter  = getLevelInfo(newTotalPoints).name;
       const promoted = levelBefore !== levelAfter;
-      const patchData = { completedMissions: completed, dailyPoints, lastActiveDay: today };
+      const patchData = { points: newTotalPoints, completedMissions: completed, dailyPoints, lastActiveDay: today };
       // Grava lastPromotionDay — checkDemotion não cobra meta no dia que subiu de nível
       if (promoted) patchData.lastPromotionDay = today;
-      const updatedUser = { ...u, ...patchData, points: newTotalPoints };
-      // Incrementa pontos via RPC atômica (evita race condition)
-      const _sbReview = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      await _sbReview.rpc('increment_points', { player_id: u.id, row_points: pts });
+      const updatedUser = { ...u, ...patchData };
       await fbPatch(`users/${u.id}`, patchData);
       store.users = store.users.map(uu => uu.id===u.id ? updatedUser : uu);
       await registrarHistorico(u.id, "aprovacao", pts, mission?.title || "Missão", u.points);
@@ -979,15 +975,20 @@ async function revokeSubmission(submissionId) {
   if (u && m) {
     const pts = Math.abs(m.points);
     const newPoints = Math.max(0, u.points - pts);
-    // 1. Desconta pontos via RPC atômica (evita race condition)
-    const _sbRevoke = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    await _sbRevoke.rpc('increment_points', { player_id: u.id, row_points: -pts });
-    store.users = store.users.map(uu => uu.id === u.id ? { ...uu, points: newPoints } : uu);
-    // 2. Registra no historico de pontos (extrato)
+    // 1. Desconta pontos via RPC atômica
+    const _sbRev = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    await _sbRev.rpc('increment_points', { player_id: u.id, row_points: -pts });
+    // 2. Remove missionId de completedMissions se for missão única (C3)
+    const newCompleted = m.frequency === "once"
+      ? (u.completedMissions || []).filter(id => id !== sub.missionId)
+      : (u.completedMissions || []);
+    await fbPatch(`users/${u.id}`, { completedMissions: newCompleted });
+    store.users = store.users.map(uu => uu.id === u.id ? { ...uu, points: newPoints, completedMissions: newCompleted } : uu);
+    // 3. Registra no historico de pontos (extrato)
     await registrarHistorico(u.id, "estorno", -pts, `Estorno: ${m.title}`, u.points);
   }
-  // 3. Volta a submission para rejeitada e zera TODOS os campos de aprovacao
-  // para que isMissionLocked nao a considere como concluida no periodo
+  // 4. Volta a submission para rejeitada e zera TODOS os campos de aprovacao (C2)
+  // "return=minimal" no sbUpdate garante que os nulls chegam ao banco
   const revoke = {
     status: "rejected",
     approvedDate: null,
@@ -1122,10 +1123,7 @@ async function executarCheckDemotion(userId) {
     }
     const prevLevel = levels[idx-1];
     const newPoints = DEMOTION_TARGET[lvl.name] !== undefined ? DEMOTION_TARGET[lvl.name] : (LEVEL_MIN_POINTS[prevLevel] || 0);
-    // Ajusta pontos para o teto do nível anterior via RPC atômica
-    const _sbDemote = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    await _sbDemote.rpc('increment_points', { player_id: userId, row_points: newPoints - u.points });
-    await fbPatch(`users/${userId}`, { missedDays:0, lastActiveDay: today, lastDemotionDay: today });
+    await fbPatch(`users/${userId}`, { points: newPoints, missedDays:0, lastActiveDay: today, lastDemotionDay: today });
     store.users = store.users.map(uu => uu.id===userId ? { ...uu, points: newPoints, missedDays:0, lastActiveDay: today, lastDemotionDay: today } : uu);
     await registrarHistorico(userId, "rebaixamento", newPoints - u.points, `Rebaixamento: ${lvl.name} → ${prevLevel}`, u.points);
     // Revoga o Regente do Equilíbrio se o usuário o tinha
@@ -2785,9 +2783,7 @@ async function corrigirPontosUsuario(userId, delta, motivo) {
   const u = store.users.find(u => u.id === userId);
   if (!u) return { error: "Usuário não encontrado" };
   const newPoints = Math.max(0, u.points + delta);
-  // Aplica correção via RPC atômica para evitar sobrescrita de pontos concorrentes
-  const _sbCorr = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  await _sbCorr.rpc('increment_points', { player_id: userId, row_points: delta });
+  await fbPatch(`users/${userId}`, { points: newPoints });
   store.users = store.users.map(uu => uu.id === userId ? { ...uu, points: newPoints } : uu);
   await registrarHistorico(userId, "correcao", delta, motivo || "Correção manual pelo admin", u.points);
   notify();
