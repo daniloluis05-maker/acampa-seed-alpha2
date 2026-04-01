@@ -3578,6 +3578,34 @@ function GincanaAdmin({ users }) {
   const [qrMsg,     setQrMsg]     = useState(null);
   const [pts,       setPts]       = useState(GINCANA_PONTOS_SCAN);
   const [salvando,  setSalvando]  = useState(false);
+  const [countdown, setCountdown] = useState(0); // contagem regressiva visual
+  const autoScanTimer = React.useRef(null);
+  const countdownTimer = React.useRef(null);
+
+  // Dispara handleScan automaticamente 1,5s após o último caractere digitado
+  function agendarAutoScan(val) {
+    // Limpa timers anteriores
+    if (autoScanTimer.current)  clearTimeout(autoScanTimer.current);
+    if (countdownTimer.current) clearInterval(countdownTimer.current);
+    if (!val.trim()) { setCountdown(0); return; }
+
+    // Contagem regressiva visual: 1 → 0
+    setCountdown(1);
+    let c = 1;
+    countdownTimer.current = setInterval(() => {
+      c = Math.max(0, c - 0.1);
+      setCountdown(parseFloat(c.toFixed(1)));
+    }, 100);
+
+    autoScanTimer.current = setTimeout(() => {
+      clearInterval(countdownTimer.current);
+      setCountdown(0);
+      handleScanRef.current();
+    }, 1000);
+  }
+
+  // Ref para handleScan (evita closure stale no timer)
+  const handleScanRef = React.useRef(null);
 
   // Config QR → Equipe
   const [novoQr,    setNovoQr]    = useState("");
@@ -3640,6 +3668,10 @@ function GincanaAdmin({ users }) {
   async function handleScan() {
     const val = qrInput.trim();
     if (!val) return;
+    // Cancela qualquer timer pendente
+    if (autoScanTimer.current)  clearTimeout(autoScanTimer.current);
+    if (countdownTimer.current) clearInterval(countdownTimer.current);
+    setCountdown(0);
     const equipe = qrMap[val];
     if (!equipe) {
       setQrMsg({ ok: false, texto: `QR "${val}" não mapeado. Configure na aba CONFIG QR.` });
@@ -3652,6 +3684,8 @@ function GincanaAdmin({ users }) {
     setMotivo("");
     setTimeout(() => setQrMsg(null), 4000);
   }
+  // Mantém a ref sempre atualizada (evita closure stale no setTimeout)
+  handleScanRef.current = handleScan;
 
   // ── Creditagem manual ──
   async function handleManual() {
@@ -3780,14 +3814,33 @@ function GincanaAdmin({ users }) {
       {abaGinc==="scanner" && (
         <div className="panel" style={{display:"flex", flexDirection:"column", gap:12}}>
           <div style={{fontSize:13, color:"#9090bb"}}>
-            Escaneie o QR do crachá do líder — o código será lido e a equipe creditada automaticamente.
+            Escaneie o QR do crachá — a equipe será creditada <strong style={{color:"#00e5ff"}}>automaticamente em 1 segundo</strong> após a leitura.
           </div>
-          <input className="input" autoFocus
-            placeholder="Cole aqui o conteúdo do QR Code..."
-            value={qrInput}
-            onChange={e => setQrInput(e.target.value)}
-            onKeyDown={e => e.key==="Enter" && handleScan()}
-          />
+          <div style={{position:"relative"}}>
+            <input className="input" autoFocus
+              placeholder="Aguardando leitura do QR Code..."
+              value={qrInput}
+              onChange={e => { setQrInput(e.target.value); agendarAutoScan(e.target.value); }}
+              onKeyDown={e => e.key==="Enter" && handleScan()}
+              style={{paddingRight: countdown>0 ? 48 : 14}}
+            />
+            {countdown > 0 && (
+              <div style={{position:"absolute", right:10, top:"50%", transform:"translateY(-50%)",
+                fontFamily:"Orbitron", fontSize:12, fontWeight:900, color:"#ffdd00",
+                textShadow:"0 0 8px #ffdd00"}}>
+                {countdown.toFixed(1)}s
+              </div>
+            )}
+            {/* Barra de progresso do countdown */}
+            {countdown > 0 && (
+              <div style={{position:"absolute", bottom:0, left:0, right:0, height:3,
+                background:"rgba(255,221,0,.15)", borderRadius:"0 0 3px 3px", overflow:"hidden"}}>
+                <div style={{height:"100%", background:"#ffdd00",
+                  width:`${(countdown/1)*100}%`, transition:"width .1s linear",
+                  boxShadow:"0 0 6px #ffdd00"}}/>
+              </div>
+            )}
+          </div>
           <div style={{display:"flex", gap:10, alignItems:"center", flexWrap:"wrap"}}>
             <div style={{flex:1, minWidth:160}}>
               <div style={{fontSize:11, color:"#6a6a9a", marginBottom:4, fontFamily:"Orbitron", letterSpacing:1}}>PONTOS</div>
@@ -3800,8 +3853,8 @@ function GincanaAdmin({ users }) {
                 value={motivo} onChange={e=>setMotivo(e.target.value)}/>
             </div>
           </div>
-          <button className="btn btn-cyan" style={{fontSize:11}} disabled={!qrInput.trim()} onClick={handleScan}>
-            ⚡ PROCESSAR QR E CREDITAR EQUIPE
+          <button className="btn btn-cyan" style={{fontSize:11}} disabled={!qrInput.trim() || salvando} onClick={handleScan}>
+            {salvando ? <span className="spinner"/> : "⚡ CREDITAR AGORA"}
           </button>
           {Object.keys(qrMap).length===0 && (
             <div style={{fontSize:12, color:"#ffdd00", padding:"8px 12px",
