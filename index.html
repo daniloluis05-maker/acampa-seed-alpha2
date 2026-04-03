@@ -2448,6 +2448,307 @@ function MissionsTab({ missions, submissions, user, onSubmit }) {
   );
 }
 
+// ─── JORNADA GUIADA — As 12 Casas da Maturidade ──────────────────────────────
+const QUIZZES_MATURIDADE = {
+  casa1: {
+    pergunta: "Segundo Mateus 6:33, o que devemos buscar em primeiro lugar?",
+    opcoes: ["Riquezas e Fama", "O Reino de Deus e sua justiça", "Poder e Autoridade", "Segurança Terrena"],
+    correta: 1, dificuldade: "Recruta", tempo: null, xp: 200,
+    titulo: "Portal do Reino"
+  },
+  casa2: {
+    pergunta: "Em Mateus 6:6, onde Jesus diz que devemos orar em segredo?",
+    opcoes: ["No alto do monte", "Na praça pública", "No seu quarto, de porta fechada", "No templo principal"],
+    correta: 2, dificuldade: "Recruta", tempo: null, xp: 200,
+    titulo: "Portal da Oração"
+  },
+  casa3: {
+    pergunta: "Qual é o princípio da sabedoria, segundo Provérbios 1:7?",
+    opcoes: ["Ler muitos livros", "O temor do Senhor", "Ter muitos anos de vida", "Falar bem em público"],
+    correta: 1, dificuldade: "Recruta", tempo: null, xp: 200,
+    titulo: "Portal da Sabedoria"
+  },
+  casa4: {
+    pergunta: "GIGANTE: Qual arma Davi usou para derrubar Golias, o gigante filisteu? (1 Samuel 17)",
+    opcoes: ["Uma espada de bronze", "Uma lança de ferro", "Uma funda e uma pedra lisa", "Um arco e flecha"],
+    correta: 2, dificuldade: "Guerreiro", tempo: 15, xp: 350,
+    titulo: "💥 GIGANTE — Golias"
+  }
+};
+
+const CASAS_ORDER = ["casa1","casa2","casa3","casa4"];
+
+function QuizModal({ quiz, casaId, onVitoria, onDerrota }) {
+  const { useState: useS, useEffect: useE, useCallback } = React;
+  const [tempoRestante, setTempoRestante] = useS(quiz.tempo || 0);
+  const [respondido,   setRespondido]     = useS(false);
+  const [acertou,      setAcertou]        = useS(null);
+  const [salvando,     setSalvando]       = useS(false);
+
+  const encerrar = useCallback((acertou) => {
+    if (salvando) return;
+    if (!acertou) { onDerrota(); return; }
+    setSalvando(true);
+    onVitoria(quiz.xp).finally(() => setSalvando(false));
+  }, [quiz.xp, onVitoria, onDerrota, salvando]);
+
+  useE(() => {
+    if (!quiz.tempo) return;
+    if (respondido) return;
+    if (tempoRestante <= 0) { encerrar(false); return; }
+    const t = setInterval(() => setTempoRestante(p => p - 1), 1000);
+    return () => clearInterval(t);
+  }, [tempoRestante, respondido, quiz.tempo, encerrar]);
+
+  function responder(idx) {
+    if (respondido) return;
+    setRespondido(true);
+    const ok = idx === quiz.correta;
+    setAcertou(ok);
+    setTimeout(() => encerrar(ok), 1400);
+  }
+
+  const temTempo = quiz.tempo !== null;
+  const pct = temTempo ? Math.round((tempoRestante / quiz.tempo) * 100) : 100;
+  const corTempo = tempoRestante <= 5 ? "#ff2255" : tempoRestante <= 10 ? "#ffdd00" : "#00e5ff";
+
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:9990,background:"rgba(0,0,0,.85)",display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(6px)"}}>
+      <div style={{background:"rgba(13,10,46,.98)",border:"1px solid rgba(0,229,255,.3)",borderRadius:8,padding:"28px 24px",maxWidth:420,width:"100%",boxShadow:"0 0 40px rgba(0,229,255,.15)"}}>
+        <div style={{fontFamily:"Orbitron",fontSize:9,color:"#00e5ff",letterSpacing:2,marginBottom:8}}>⚔️ DESAFIO DA {casaId.toUpperCase()}</div>
+        <div style={{fontFamily:"Orbitron",fontSize:9,color:"#6a6a9a",letterSpacing:1,marginBottom:16,textTransform:"uppercase"}}>{quiz.dificuldade} · +{quiz.xp} XP</div>
+
+        {temTempo && (
+          <div style={{marginBottom:16}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+              <span style={{fontFamily:"Orbitron",fontSize:9,color:"#6a6a9a",letterSpacing:1}}>TEMPO</span>
+              <span style={{fontFamily:"Orbitron",fontSize:18,fontWeight:900,color:corTempo,textShadow:`0 0 12px ${corTempo}`}}>{tempoRestante}s</span>
+            </div>
+            <div style={{width:"100%",height:6,background:"rgba(255,255,255,.08)",borderRadius:99,overflow:"hidden"}}>
+              <div style={{height:"100%",width:`${pct}%`,background:`linear-gradient(90deg,${corTempo},${corTempo}88)`,borderRadius:99,transition:"width 1s linear"}}/>
+            </div>
+          </div>
+        )}
+
+        <p style={{fontSize:15,color:"#e0e0ff",lineHeight:1.6,marginBottom:22}}>{quiz.pergunta}</p>
+
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {quiz.opcoes.map((op, i) => {
+            let cor = "rgba(0,229,255,.15)"; let textCor = "#d0d8ff";
+            if (respondido) {
+              if (i === quiz.correta) { cor = "rgba(0,255,68,.25)"; textCor = "#00ff44"; }
+              else if (i !== quiz.correta && acertou === false) { cor = "rgba(255,23,68,.15)"; textCor = "#ff6090"; }
+            }
+            return (
+              <button key={i} disabled={respondido || salvando}
+                onClick={() => responder(i)}
+                style={{padding:"12px 16px",background:cor,border:`1px solid ${respondido && i===quiz.correta?"rgba(0,255,68,.5)":"rgba(0,229,255,.2)"}`,
+                  borderRadius:4,color:textCor,fontSize:14,textAlign:"left",cursor:respondido?"default":"pointer",
+                  transition:"all .2s",fontFamily:"'Rajdhani',sans-serif"}}>
+                <span style={{fontFamily:"Orbitron",fontSize:9,marginRight:10,color:"#6a6a9a"}}>{String.fromCharCode(65+i)}</span>
+                {op}
+              </button>
+            );
+          })}
+        </div>
+
+        {respondido && (
+          <div style={{marginTop:16,padding:"10px 14px",borderRadius:4,textAlign:"center",
+            background: acertou?"rgba(0,255,68,.1)":"rgba(255,23,68,.1)",
+            border:`1px solid ${acertou?"rgba(0,255,68,.4)":"rgba(255,23,68,.4)"}`}}>
+            <span style={{fontFamily:"Orbitron",fontSize:12,color:acertou?"#00ff44":"#ff2255"}}>
+              {acertou ? "🛡️ VITÓRIA!" : "💥 ERROU!"}
+            </span>
+            {salvando && <span className="spinner" style={{marginLeft:10}}/>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function JornadaGuiada({ userId, userPoints }) {
+  const { useState: useS, useEffect: useE } = React;
+  const [quizAtivo,    setQuizAtivo]    = useS(null);  // { casaId, quiz }
+  const [progresso,    setProgresso]    = useS(null);  // array de casaIds concluídas
+  const [carregando,   setCarregando]   = useS(true);
+  const [msg,          setMsg]          = useS(null);
+
+  // Chave de storage por usuário
+  const STORAGE_KEY = `jornada_progresso_${userId}`;
+
+  // Carrega progresso do localStorage (persistência local simples)
+  useE(() => {
+    try {
+      const salvo = localStorage.getItem(STORAGE_KEY);
+      setProgresso(salvo ? JSON.parse(salvo) : []);
+    } catch(e) {
+      setProgresso([]);
+    }
+    setCarregando(false);
+  }, [userId]);
+
+  function salvarProgresso(novoProgresso) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(novoProgresso)); } catch(e) {}
+    setProgresso(novoProgresso);
+  }
+
+  async function onVitoria(xp) {
+    const casaId = quizAtivo.casaId;
+    const novoProgresso = progresso.includes(casaId) ? progresso : [...progresso, casaId];
+    salvarProgresso(novoProgresso);
+
+    // Tenta creditar XP via store do sistema principal
+    try {
+      const u = store.users.find(u => u.id === userId);
+      if (u) {
+        const newPoints = u.points + xp;
+        const today = todayStr();
+        const dailyPoints = { ...(u.dailyPoints||{}), [today]: ((u.dailyPoints||{})[today]||0) + xp };
+        const _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        await _sb.rpc('increment_points', { player_id: userId, row_points: xp });
+        await fbPatch(`users/${userId}`, { dailyPoints });
+        store.users = store.users.map(uu => uu.id===userId ? { ...uu, points: newPoints, dailyPoints } : uu);
+        await registrarHistorico(userId, "aprovacao", xp, `Jornada Guiada — ${QUIZZES_MATURIDADE[casaId].titulo}`, u.points);
+        notify();
+      }
+    } catch(e) { console.error("[Jornada] Erro ao creditar XP:", e); }
+
+    setQuizAtivo(null);
+    setMsg({ tipo:"ok", texto:`🛡️ CASA CONQUISTADA! +${xp} XP creditados.` });
+    setTimeout(() => setMsg(null), 4000);
+  }
+
+  function onDerrota() {
+    setQuizAtivo(null);
+    setMsg({ tipo:"erro", texto:"💥 O Gigante recuou por ora. Estude e tente novamente." });
+    setTimeout(() => setMsg(null), 4000);
+  }
+
+  if (carregando) return (
+    <div style={{textAlign:"center",padding:40}}>
+      <span className="spinner" style={{width:28,height:28}}/>
+    </div>
+  );
+
+  return (
+    <div>
+      {quizAtivo && (
+        <QuizModal
+          quiz={quizAtivo.quiz}
+          casaId={quizAtivo.casaId}
+          onVitoria={onVitoria}
+          onDerrota={onDerrota}
+        />
+      )}
+
+      {/* Cabeçalho */}
+      <div style={{marginBottom:24,padding:"16px 20px",background:"rgba(0,229,255,.04)",border:"1px solid rgba(0,229,255,.15)",borderRadius:4}}>
+        <div style={{fontFamily:"Orbitron",fontSize:13,fontWeight:700,color:"#00ccff",letterSpacing:2,marginBottom:6}}>
+          🗺️ AS 12 CASAS DA MATURIDADE
+        </div>
+        <div style={{fontSize:13,color:"#9090bb",lineHeight:1.6}}>
+          Uma jornada sequencial de crescimento espiritual. Cada casa deve ser conquistada em ordem. Os Gigantes exigem resposta rápida — você tem apenas 15 segundos!
+        </div>
+        <div style={{marginTop:10,fontFamily:"Orbitron",fontSize:9,color:"#6a6a9a",letterSpacing:1}}>
+          PROGRESSO: {progresso.length} / {CASAS_ORDER.length} CASAS CONQUISTADAS
+        </div>
+        <div style={{marginTop:8,width:"100%",height:6,background:"rgba(255,255,255,.06)",borderRadius:99,overflow:"hidden"}}>
+          <div style={{height:"100%",width:`${Math.round((progresso.length/CASAS_ORDER.length)*100)}%`,background:"linear-gradient(90deg,#00bcd4,#00e5ff)",borderRadius:99,transition:"width .5s ease"}}/>
+        </div>
+      </div>
+
+      {msg && (
+        <div style={{marginBottom:16,padding:"12px 16px",borderRadius:4,
+          background: msg.tipo==="ok"?"rgba(0,255,68,.1)":"rgba(255,23,68,.1)",
+          border:`1px solid ${msg.tipo==="ok"?"rgba(0,255,68,.35)":"rgba(255,23,68,.35)"}`,
+          fontFamily:"Orbitron",fontSize:11,
+          color: msg.tipo==="ok"?"#00ff44":"#ff6090"}}>
+          {msg.texto}
+        </div>
+      )}
+
+      {/* Trilha */}
+      <div style={{position:"relative",borderLeft:"2px solid rgba(0,229,255,.15)",marginLeft:16,paddingLeft:28,display:"flex",flexDirection:"column",gap:20}}>
+        {CASAS_ORDER.map((casaId, index) => {
+          const casa         = QUIZZES_MATURIDADE[casaId];
+          const concluida    = progresso.includes(casaId);
+          const anteriorOk   = index === 0 || progresso.includes(CASAS_ORDER[index - 1]);
+          const liberada     = anteriorOk && !concluida;
+          const bloqueada    = !anteriorOk;
+          const eGigante     = casa.tempo !== null;
+          const corBorda     = concluida ? "#00e5ff" : eGigante ? "#ff2255" : "rgba(0,229,255,.2)";
+
+          return (
+            <div key={casaId} style={{position:"relative",opacity:bloqueada?0.35:1,transition:"opacity .3s"}}>
+              {/* Bolinha indicadora */}
+              <div style={{position:"absolute",left:-42,top:16,width:22,height:22,borderRadius:"50%",
+                border:`2px solid ${concluida?"#00e5ff":eGigante&&liberada?"#ff2255":"rgba(0,229,255,.3)"}`,
+                background: concluida?"rgba(0,229,255,.2)":"rgba(13,10,46,1)",
+                display:"flex",alignItems:"center",justifyContent:"center",
+                boxShadow: concluida?"0 0 12px rgba(0,229,255,.5)":eGigante&&liberada?"0 0 10px rgba(255,23,68,.4)":"none"}}>
+                <span style={{fontSize:10}}>{concluida?"✓":eGigante?"⚔":"◈"}</span>
+              </div>
+
+              <div style={{padding:"16px 20px",borderRadius:4,border:`1px solid ${corBorda}`,
+                background: concluida?"rgba(0,229,255,.04)":eGigante&&liberada?"rgba(255,23,68,.04)":"rgba(255,255,255,.02)"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8,marginBottom:8}}>
+                  <div>
+                    <div style={{fontFamily:"Orbitron",fontSize:9,color:"#6a6a9a",letterSpacing:2,marginBottom:3}}>
+                      CASA {index + 1} · {casa.dificuldade.toUpperCase()}
+                    </div>
+                    <div style={{fontFamily:"Orbitron",fontSize:13,fontWeight:700,
+                      color: concluida?"#00ccff":eGigante?"#ff4444":"#e0e0ff"}}>
+                      {casa.titulo}
+                    </div>
+                  </div>
+                  <div style={{fontFamily:"Orbitron",fontSize:10,color:"#ffdd00",letterSpacing:1}}>+{casa.xp} XP</div>
+                </div>
+
+                {eGigante && (
+                  <div style={{marginBottom:10,fontSize:11,color:"#ff6666",fontStyle:"italic",borderLeft:"2px solid #ff2255",paddingLeft:10}}>
+                    ⏱ Atenção: você tem apenas {casa.tempo} segundos para responder!
+                  </div>
+                )}
+
+                {concluida && (
+                  <div style={{fontFamily:"Orbitron",fontSize:9,color:"#00e5ff",letterSpacing:2}}>🛡️ CASA CONQUISTADA</div>
+                )}
+                {bloqueada && (
+                  <div style={{fontFamily:"Orbitron",fontSize:9,color:"#6a6a9a",letterSpacing:1}}>🔒 BLOQUEADA — CONQUISTE A CASA ANTERIOR</div>
+                )}
+                {liberada && (
+                  <button
+                    onClick={() => setQuizAtivo({ casaId, quiz: casa })}
+                    style={{fontFamily:"Orbitron",fontSize:10,letterSpacing:2,fontWeight:700,padding:"10px 20px",
+                      border:"none",borderRadius:3,cursor:"pointer",width:"100%",marginTop:4,
+                      background: eGigante?"linear-gradient(135deg,#cc0000,#880000)":"linear-gradient(135deg,#00bcd4,#0077aa)",
+                      color:"#fff",boxShadow: eGigante?"0 0 16px rgba(255,23,68,.3)":"0 0 12px rgba(0,188,212,.3)"}}>
+                    {eGigante ? "⚔️ ENFRENTAR GIGANTE" : "▶ ENFRENTAR DESAFIO"}
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Próximas casas em desenvolvimento */}
+        <div style={{position:"relative",opacity:0.3}}>
+          <div style={{position:"absolute",left:-42,top:16,width:22,height:22,borderRadius:"50%",
+            border:"2px solid rgba(0,229,255,.2)",background:"rgba(13,10,46,1)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <span style={{fontSize:10}}>…</span>
+          </div>
+          <div style={{padding:"16px 20px",borderRadius:4,border:"1px solid rgba(255,255,255,.06)",background:"rgba(255,255,255,.01)"}}>
+            <div style={{fontFamily:"Orbitron",fontSize:9,color:"#6a6a9a",letterSpacing:2,marginBottom:4}}>CASAS 5–12</div>
+            <div style={{fontFamily:"Orbitron",fontSize:11,color:"#444466"}}>EM BREVE — CONTINUE SUA JORNADA</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // ─── MissionList — componente separado com filtragem memoizada ────────────────
 // Recalcula `filtered` apenas quando os filtros ou os dados realmente mudam,
 // evitando re-processamento desnecessário a cada re-render do pai.
@@ -2716,12 +3017,15 @@ function UserDashboard({ user, onUpdate }) {
       <div style={{marginBottom:16}}><LevelBar user={currentUser} /></div>
       <ArchetypeCard userId={currentUser.id} />
       <div className="nav">
-        {[["missions","MISSÕES"],["ranking","RANKING"],["extrato","EXTRATO"],["history","HISTÓRICO"],["skills","HABILIDADES"]].map(([k,l]) => (
+        {[["missions","MISSÕES"],["jornada","🗺️ JORNADA"],["ranking","RANKING"],["extrato","EXTRATO"],["history","HISTÓRICO"],["skills","HABILIDADES"]].map(([k,l]) => (
           <button key={k} className={`nav-btn ${tab===k?"active":""}`} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
       {tab==="missions" && (
         <MissionsTab missions={storeData.missions} submissions={storeData.submissions} user={currentUser} onSubmit={onUpdate} />
+      )}
+      {tab==="jornada" && (
+        <JornadaGuiada userId={currentUser.id} userPoints={currentUser.points} />
       )}
       {tab==="ranking" && <Ranking currentUserId={user.id} />}
       {tab==="extrato" && (
@@ -4225,7 +4529,7 @@ function App() {
     // essa função ao desmontar o App, removendo os listeners via ref.off(handler).
     const cleanup = subscribeDB(() => {
       setLoaded(true);
-      setFirebaseError(store.dbError || false);
+      setDbError(store.dbError || false);
     });
     return cleanup;
   }, []);
