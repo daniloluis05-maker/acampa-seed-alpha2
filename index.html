@@ -30,7 +30,7 @@
     <!-- ── Babel Standalone: transpila JSX no browser (dev/deploy simples).
          Para produção de alta escala, migrar para Vite + build step
          elimina este script (~360KB) e reduz TBT em ~1-3s em mobile. ── -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.26.5/babel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
 /* ── Variáveis globais de design ────────────────────────────────────────────── */
@@ -163,11 +163,22 @@ body.no-effects .scanline{opacity:0}
 .destino-title-glow{animation:destino-title 4s ease-in-out infinite}
 .destino-icon-pulse{animation:destino-icon-pulse 2.5s ease-in-out infinite}
 .destino-badge{animation:destino-badge 2s ease-in-out infinite}
+
+/* ── Glitch, Mentor e Timer — fora do Babel para evitar erro de parser ── */
+@keyframes glitch-shake{0%,100%{transform:translate(0)}10%{transform:translate(-4px,2px) skewX(2deg)}20%{transform:translate(4px,-2px) skewX(-2deg)}30%{transform:translate(-3px,3px)}40%{transform:translate(3px,-3px) skewX(1deg)}50%{transform:translate(-2px,2px)}60%{transform:translate(2px,-1px)}70%{transform:translate(-4px,1px) skewX(-1deg)}80%{transform:translate(4px,-2px)}90%{transform:translate(-2px,3px)}}
+@keyframes glitch-scan{0%{top:-10%;opacity:.8}100%{top:110%;opacity:0}}
+@keyframes glitch-rgb{0%,100%{text-shadow:2px 0 #ff2255,-2px 0 #00e5ff}25%{text-shadow:-3px 0 #ff2255,3px 0 #00e5ff}50%{text-shadow:3px 2px #ff2255,-3px -2px #00e5ff}75%{text-shadow:-2px -1px #ff2255,2px 1px #00e5ff}}
+.glitch-active{animation:glitch-shake 0.5s ease-in-out!important}
+.glitch-text{animation:glitch-rgb 0.4s steps(1) infinite!important}
+@keyframes mentor-pulse{0%,100%{box-shadow:0 0 8px #9b30ff44}50%{box-shadow:0 0 20px #9b30ff,0 0 40px #9b30ff44}}
+.mentor-glow{animation:mentor-pulse 2s ease-in-out infinite}
+@keyframes timer-danger{0%,100%{opacity:1}50%{opacity:.3}}
+.timer-danger{animation:timer-danger 0.4s ease-in-out infinite}
     </style>
 </head>
 <body>
 <div id="root"><div class="app" style=""><div class="scanline"></div><div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px 20px 40px;"><div style="width: 100%; max-width: 460px;"><div style="margin-bottom: 0px;"><div style="text-align: center; position: relative;"><div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 520px; height: 520px; border-radius: 50%; background: radial-gradient(circle, rgba(155, 48, 255, 0.18) 0%, rgba(0, 229, 255, 0.1) 50%, transparent 75%); filter: blur(24px); pointer-events: none; --darkreader-inline-bgimage: radial-gradient(circle, var(--darkreader-background-9b30ff2e, rgba(85, 3, 161, 0.18)) 0%, var(--darkreader-background-00e5ff1a, rgba(15, 179, 198, 0.1)) 50%, var(--darkreader-background-00000000, rgba(0, 0, 0, 0)) 75%); --darkreader-inline-bgcolor: initial;" data-darkreader-inline-bgimage="" data-darkreader-inline-bgcolor=""></div><img src="./Missão Level-Up — Acampa Seed 2026_files/WhatsApp_Image_2026-03-08_at_20.32.14-removebg-preview_uiyj32.png" alt="Missão Level-Up — Acampa Seed 2026" style="width: 100%; max-width: 600px; height: auto; display: block; margin: 0px auto; position: relative; filter: drop-shadow(rgba(0, 229, 255, 0.6) 0px 0px 20px) drop-shadow(rgba(155, 48, 255, 0.5) 0px 0px 40px) drop-shadow(rgba(255, 215, 0, 0.25) 0px 0px 60px); animation: 8s ease 0s infinite normal none running flicker;"></div></div><p style="text-align: center; color: rgb(144, 144, 187); margin-bottom: 28px; margin-top: 8px; font-size: 14px; line-height: 1.8; font-style: italic; --darkreader-inline-color: var(--darkreader-text-9090bb, #93a1b9);" data-darkreader-inline-color="">"Prossigo para o alvo, para o prêmio da soberana vocação de Deus em Cristo Jesus."<br><span style="font-size: 11px; opacity: 0.7; font-style: normal; font-family: Orbitron; letter-spacing: 1px; color: rgb(255, 77, 187); --darkreader-inline-color: var(--darkreader-text-ff4dbb, #f254b6);" data-darkreader-inline-color="">Filipenses 3:14</span></p><div class="panel panel-cyan" style="padding: 32px; border-radius: 4px;"><div style="display: flex; margin-bottom: 28px; border-bottom: 1px solid rgba(0, 229, 255, 0.2); --darkreader-inline-border-bottom: var(--darkreader-border-00e5ff33, rgba(13, 157, 174, 0.2));" data-darkreader-inline-border-bottom=""><button class="nav-btn active">▶ Entrar</button><button class="nav-btn ">+ Cadastrar</button></div><div style="display: flex; flex-direction: column; gap: 16px;"><div><label class="label">Email</label><input class="input" type="email" placeholder="seu@email.com" value=""></div><div><label class="label">Senha </label><input class="input" type="password" placeholder="••••••••" value=""></div><button class="btn btn-cyan" style="width: 100%; margin-top: 8px;">▶ INICIAR JORNADA</button></div></div><p style="text-align: center; margin-top: 16px; font-size: 12px; color: rgb(106, 106, 154); --darkreader-inline-color: var(--darkreader-text-6a6a9a, #989084);" data-darkreader-inline-color="">Novo por aqui? <button style="background: none; border: none; color: rgb(0, 204, 255); cursor: pointer; font-family: Orbitron; font-size: 11px; --darkreader-inline-bgimage: none; --darkreader-inline-bgcolor: initial; --darkreader-inline-border-top: none; --darkreader-inline-border-right: none; --darkreader-inline-border-bottom: none; --darkreader-inline-border-left: none; --darkreader-inline-color: var(--darkreader-text-00ccff, #29cdf7);" data-darkreader-inline-bgimage="" data-darkreader-inline-bgcolor="" data-darkreader-inline-border-top="" data-darkreader-inline-border-right="" data-darkreader-inline-border-bottom="" data-darkreader-inline-border-left="" data-darkreader-inline-color="">CADASTRAR-SE</button></p></div></div></div></div>
-<script type="text/babel">
+<script type="text/babel" data-presets="react,env" data-plugins="transform-optional-chaining,transform-nullish-coalescing-operator">
 const { useState, useEffect, useRef } = React;
 
 
@@ -2805,48 +2816,6 @@ const QUIZZES_MATURIDADE = {
 const CASAS_ORDER = ["casa1","casa2","casa3","casa4","casa5","casa6","casa7","casa8","casa9","casa10","casa11","casa12"];
 const BLOQUEIO_GUERREIRO_MS = 5 * 60 * 1000; // 5 minutos em ms
 
-// ── CSS de Glitch (injetado no <head> uma vez) ────────────────────────────────
-if (!document.getElementById('glitch-style')) {
-  const st = document.createElement('style');
-  st.id = 'glitch-style';
-  st.textContent = `
-    @keyframes glitch-shake {
-      0%,100%{transform:translate(0)}
-      10%{transform:translate(-4px,2px) skewX(2deg)}
-      20%{transform:translate(4px,-2px) skewX(-2deg)}
-      30%{transform:translate(-3px,3px)}
-      40%{transform:translate(3px,-3px) skewX(1deg)}
-      50%{transform:translate(-2px,2px)}
-      60%{transform:translate(2px,-1px)}
-      70%{transform:translate(-4px,1px) skewX(-1deg)}
-      80%{transform:translate(4px,-2px)}
-      90%{transform:translate(-2px,3px)}
-    }
-    @keyframes glitch-scan {
-      0%{top:-10%;opacity:.8}
-      100%{top:110%;opacity:0}
-    }
-    @keyframes glitch-rgb {
-      0%,100%{text-shadow:2px 0 #ff2255,-2px 0 #00e5ff}
-      25%{text-shadow:-3px 0 #ff2255,3px 0 #00e5ff}
-      50%{text-shadow:3px 2px #ff2255,-3px -2px #00e5ff}
-      75%{text-shadow:-2px -1px #ff2255,2px 1px #00e5ff}
-    }
-    .glitch-active { animation: glitch-shake 0.5s ease-in-out !important; }
-    .glitch-text   { animation: glitch-rgb   0.4s steps(1) infinite !important; }
-    @keyframes mentor-pulse {
-      0%,100%{box-shadow:0 0 8px #9b30ff44}
-      50%{box-shadow:0 0 20px #9b30ff,0 0 40px #9b30ff44}
-    }
-    .mentor-glow { animation: mentor-pulse 2s ease-in-out infinite; }
-    @keyframes timer-danger {
-      0%,100%{opacity:1} 50%{opacity:.3}
-    }
-    .timer-danger { animation: timer-danger 0.4s ease-in-out infinite; }
-  `;
-  document.head.appendChild(st);
-}
-
 // ── QuizModal — Motor de batalha completo ─────────────────────────────────────
 function QuizModal({ quiz, casaId, casaNum, onVitoria, onDerrota, onUsarMentor, podeUsarMentor }) {
   const { useState: useS, useEffect: useE, useCallback, useRef } = React;
@@ -5252,9 +5221,33 @@ function App() {
   );
 }
 
-window.onload = function() {
-  ReactDOM.createRoot(document.getElementById("root")).render(<App />);
-};
+// window.onload movido para script externo abaixo — evita race condition com Babel
+</script>
+
+<!-- ── Bootstrap React — executa APÓS o Babel terminar a transpilação ── -->
+<script>
+(function() {
+  var tries = 0, max = 240;
+  function mount() {
+    tries++;
+    if (typeof App !== 'undefined' && typeof ReactDOM !== 'undefined') {
+      try {
+        ReactDOM.createRoot(document.getElementById('root')).render(
+          React.createElement(App)
+        );
+      } catch(e) { console.error('[Bootstrap] Erro:', e); }
+    } else if (tries < max) {
+      setTimeout(mount, 50);
+    } else {
+      console.error('[Bootstrap] Timeout — Babel não terminou em 12s.');
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function(){ setTimeout(mount, 80); });
+  } else {
+    setTimeout(mount, 80);
+  }
+})();
 </script>
 
 <!-- Player de Música Flutuante -->
