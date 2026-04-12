@@ -32,9 +32,6 @@
          Para produção de alta escala, migrar para Vite + build step
          elimina este script (~360KB) e reduz TBT em ~1-3s em mobile. ── -->
     <script src="https://unpkg.com/@babel/standalone@7.26.5/babel.min.js"></script>
-    <!-- Credenciais de ambiente — NÃO versionar _env.js, apenas _env.example.js -->
-    <!-- Em produção (Vercel) este arquivo não existe; as vars vêm do servidor.  -->
-    <script src="_env.js" onerror="console.warn('[mlup] _env.js não encontrado. Configure window.__ENV__ ou crie _env.js a partir de _env.example.js')"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
 /* ── Variáveis globais de design ────────────────────────────────────────────── */
