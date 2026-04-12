@@ -1,2 +1,7 @@
 # Local Netlify folder
 .netlify
+-e 
+# Variáveis de ambiente — NUNCA commitar
+.env
+.env.local
+.env.*.local
