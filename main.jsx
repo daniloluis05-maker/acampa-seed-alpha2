@@ -1,0 +1,5098 @@
+const { useState, useEffect, useRef } = React;
+
+
+const INITIAL_MISSIONS = [
+  { id: 1,  title: "Oração Diária I",   desc: "Ore por até 15 minutos buscando mais intimidade com Deus.", tip: "Escolha um horário fixo, de preferência pela manhã ao acordar ou à noite antes de dormir. Separe um lugar tranquilo, sem distração. Anote um pedido e uma gratidão do dia.", points: 100, category: "Espiritualidade", difficulty: "FÁCIL", frequency: "daily" },
+  { id: 2,  title: "Oração Diária II",  desc: "Ore por até 30 minutos buscando mais intimidade com Deus.", tip: "Divida o tempo: 10 min de louvor, 10 min de intercessão por pessoas e 10 min ouvindo a Deus em silêncio. Anote o que sentir no coração. Use músicas de adoração para entrar no clima.", points: 200, category: "Espiritualidade", difficulty: "MÉDIO", frequency: "daily" },
+  { id: 3,  title: "Oração Diária III", desc: "Ore por 1 hora buscando mais intimidade com Deus.", tip: "Separe blocos de 15 min: adoração, confissão, agradecimento e súplica (método ACAS). Escreva um diário de oração anotando versículos, impressões e respostas recebidas.", points: 300, category: "Espiritualidade", difficulty: "DIFÍCIL", frequency: "daily" },
+  { id: 4,  title: "Oração Diária IV",  desc: "Ore por 2 horas contínuas buscando mais intimidade com Deus.", tip: "Convide amigos para fazer junto — é mais fácil manter o foco em grupo. Interceda pela sua cidade, liderança e pelo avivamento. Use a Bíblia como guia de oração, lendo salmos e orando sobre eles.", points: 450, category: "Espiritualidade", difficulty: "MUITO DIFÍCIL", frequency: "daily" },
+  { id: 5,  title: "Leitura Bíblica I",     desc: "Leia 1 capítulo da Bíblia e anote o que mais chamou sua atenção.", tip: "Comece pelo Novo Testamento se não sabe por onde começar. Leia devagar, uma vez só, e destaque um versículo que te tocou. Anote com suas próprias palavras o que o texto significa para você hoje.", points: 100, category: "Sabedoria", difficulty: "FÁCIL",         frequency: "daily" },
+  { id: 6,  title: "Leitura Bíblica II",  desc: "Leia 1 capítulo da Bíblia e prepare um devocional com o que aprendeu.", tip: "Após ler, responda: O que o texto diz? O que significa para minha vida? Como vou aplicar hoje? Compartilhe o devocional com alguém ou poste no grupo da igreja como forma de edificar outros.", points: 150, category: "Sabedoria", difficulty: "MÉDIO",         frequency: "daily" },
+  { id: 7,  title: "Leitura Bíblica III",    desc: "Leia 5 capítulos da Bíblia e faça um estudo aprofundado do trecho.", tip: "Escolha um livro e leia 5 capítulos seguidos. Pesquise o contexto histórico, quem escreveu e para quem. Anote pelo menos 3 aplicações práticas para sua vida. Você pode usar comentários bíblicos ou aplicativos como YouVersion.", points: 300, category: "Sabedoria", difficulty: "DIFÍCIL",       frequency: "daily" },
+  { id: 21, title: "Leitura Bíblica IV",     desc: "Escolha um livro da Bíblia, leia completamente e prepare um estudo sobre ele.", tip: "Escolha um livro menor para começar, como Filipenses ou Tiago. Leia todo o livro de uma vez, anote os temas principais e prepare um estudo com pelo menos 3 pontos para compartilhar.", points: 450, category: "Sabedoria", difficulty: "MUITO DIFÍCIL", frequency: "weekly" },
+  { id: 8,  title: "Testamento Completo",    desc: "Leia um testamento completo da Bíblia (Antigo ou Novo).", tip: "O Novo Testamento tem 27 livros e é mais curto — uma boa porta de entrada. Use um plano de leitura no YouVersion ou similar.", points: 700, category: "Sabedoria", difficulty: "MUITO DIFÍCIL", frequency: "once" },
+  { id: 22, title: "Bíblia Completa",         desc: "Leia a Bíblia completa.", tip: "Use um plano de leitura anual no YouVersion ou similar. Divida em blocos diários para não acumular.", points: 1500, category: "Sabedoria", difficulty: "MUITO DIFÍCIL", frequency: "once" },
+  { id: 9,  title: "Jejum da Travessia",           desc: "Participe do jejum proposto pela igreja sobre o tema profético Ano da Travessia.", tip: "Este jejum é uma convocação coletiva da igreja. Participe com intenção e propósito, buscando a direção de Deus para este ano. O jejum pode ser de alimentos, redes sociais ou qualquer hábito.", points: 100, category: "Resistência", difficulty: "FÁCIL", frequency: "daily" },
+  { id: 10, title: "Jejum da Sala de Oração Online",  desc: "Faça jejum em 1 dia que houver Sala de Oração online.", tip: "Planeje com antecedência qual refeição ou hábito irá abrir mão. Entre na sala já preparado espiritualmente e participe ativamente durante todo o tempo.", points: 150, category: "Resistência", difficulty: "MÉDIO", frequency: "weekly" },
+  { id: 11, title: "Bônus: Jejum Ampliado",           desc: "Faça jejum em 3 ou mais Salas de Oração online na mesma semana (segunda a domingo).", tip: "Combine com amigos para jejuarem juntos nas 3 salas — isso fortalece o compromisso. Registre cada dia de jejum para não perder a contagem.", points: 100, category: "Resistência", difficulty: "MÉDIO", frequency: "weekly" },
+  { id: 12, title: "Jejum Acampa Seed 2026",          desc: "Jejue durante toda a semana do acampamento.", tip: "Defina o tipo de jejum antes do acampamento e mantenha o compromisso. Hidrate-se bem se for jejum de alimentos. Ao final, compartilhe um testemunho com o grupo.", points: 500, category: "Resistência", difficulty: "MUITO DIFÍCIL", frequency: "once" },
+  { id: 23, title: "Jejum Propósito Pessoal I",       desc: "Faça jejum diário com um propósito pessoal definido por você. Pode ser de alimentos, hábito ou qualquer coisa que represente uma entrega a Deus. Este jejum não soma com outros jejuns.", tip: "Defina claramente seu propósito antes de começar. O jejum pode ser de alimentos, redes sociais, entretenimento ou qualquer hábito. Se for quebrado, o contador de dias recomeça do zero.", points: 100, category: "Resistência", difficulty: "FÁCIL", frequency: "daily" },
+  { id: 24, title: "Jejum Propósito Pessoal II",      desc: "Faça jejum diário com um segundo propósito pessoal definido por você. Pode ser de alimentos, hábito ou qualquer coisa que represente uma entrega a Deus. Este jejum não soma com os demais.", tip: "Use esta missão se quiser jejuar por mais de um objetivo pessoal ao mesmo tempo. Cada propósito é independente. Se for quebrado, o contador de dias recomeça do zero.", points: 100, category: "Resistência", difficulty: "FÁCIL", frequency: "daily" },
+  { id: 25, title: "Bônus: 7 Dias de Jejum I",        desc: "Bônus conquistado ao completar 7 dias consecutivos de jejum do Propósito Pessoal I sem interrupção.", tip: "Se o jejum for quebrado antes dos 7 dias, você precisa começar do zero. Mantenha o foco no propósito que definiu no início.", points: 100, category: "Resistência", difficulty: "DIFÍCIL", frequency: "once" },
+  { id: 26, title: "Bônus: 15 Dias de Jejum I",       desc: "Bônus conquistado ao completar 15 dias consecutivos de jejum do Propósito Pessoal I sem interrupção.", tip: "Uma conquista significativa! Se o jejum for quebrado antes dos 15 dias, você precisa começar do zero.", points: 200, category: "Resistência", difficulty: "DIFÍCIL", frequency: "once" },
+  { id: 27, title: "Bônus: 30 Dias de Jejum I",       desc: "Bônus conquistado ao completar 30 dias consecutivos de jejum do Propósito Pessoal I sem interrupção.", tip: "Uma conquista extraordinária de disciplina e entrega. Se o jejum for quebrado antes dos 30 dias, você precisa começar do zero.", points: 300, category: "Resistência", difficulty: "MUITO DIFÍCIL", frequency: "monthly" },
+  { id: 28, title: "Bônus: 7 Dias de Jejum II",       desc: "Bônus conquistado ao completar 7 dias consecutivos de jejum do Propósito Pessoal II sem interrupção.", tip: "Se o jejum for quebrado antes dos 7 dias, você precisa começar do zero. Mantenha o foco no propósito que definiu no início.", points: 100, category: "Resistência", difficulty: "DIFÍCIL", frequency: "once" },
+  { id: 29, title: "Bônus: 15 Dias de Jejum II",      desc: "Bônus conquistado ao completar 15 dias consecutivos de jejum do Propósito Pessoal II sem interrupção.", tip: "Uma conquista significativa! Se o jejum for quebrado antes dos 15 dias, você precisa começar do zero.", points: 200, category: "Resistência", difficulty: "DIFÍCIL", frequency: "once" },
+  { id: 30, title: "Bônus: 30 Dias de Jejum II",      desc: "Bônus conquistado ao completar 30 dias consecutivos de jejum do Propósito Pessoal II sem interrupção.", tip: "Uma conquista extraordinária de disciplina e entrega. Se o jejum for quebrado antes dos 30 dias, você precisa começar do zero.", points: 300, category: "Resistência", difficulty: "MUITO DIFÍCIL", frequency: "monthly" },
+  { id: 13, title: "Participar da Sala de Oração Online",  desc: "Participe de uma Sala de Oração no formato online.", tip: "Entre com antecedência, num lugar tranquilo e sem interrupções. Desative notificações do celular. Participe ativamente — ore em voz alta quando for sua vez.", points: 200, category: "Influência", difficulty: "MÉDIO", frequency: "daily" },
+  { id: 14, title: "Convide para a Sala de Oração Online",  desc: "Convide pelo menos 1 pessoa para participar da Sala de Oração online.", tip: "Fale sobre o que a Sala de Oração significa para você e como tem te transformado. Envie o link com antecedência e acompanhe a pessoa durante o momento.", points: 200, category: "Influência", difficulty: "MÉDIO", frequency: "weekly" },
+  { id: 15, title: "Lidere uma Sala de Oração Online",      desc: "Lidere uma Sala de Oração no formato online.", tip: "Prepare um roteiro simples: abertura com louvor, divisão de temas de oração e encerramento. Envie o link com antecedência para os participantes.", points: 300, category: "Influência", difficulty: "DIFÍCIL", frequency: "weekly" },
+  { id: 16, title: "Lidere uma Vigília ou Jejum Coletivo",  desc: "Lidere uma Vigília ou organize um Jejum Coletivo com o grupo.", tip: "Divida a vigília em blocos temáticos: louvor, palavra, intercessão. Para o jejum coletivo, defina um dia e comunique com antecedência. Compartilhe os testemunhos ao final.", points: 500, category: "Influência", difficulty: "MUITO DIFÍCIL", frequency: "once" },
+  { id: 31, title: "Sala de Oração Presencial",             desc: "Participe de uma Sala de Oração presencial.", tip: "Chegue alguns minutos antes para se preparar espiritualmente. Desligue o celular e esteja totalmente presente durante o tempo de oração.", points: 200, category: "Influência", difficulty: "MÉDIO", frequency: "weekly" },
+  { id: 17, title: "Participar da EBD",                desc: "Esteja presente em uma aula da Escola Bíblica Dominical.", tip: "Chegue alguns minutos antes para se acomodar. Fique atento à aula e não mexa no celular. Ao chegar em casa, releia o ponto principal da aula.", points: 100, category: "Sinaxe", difficulty: "FÁCIL", frequency: "weekly" },
+  { id: 18, title: "Conteúdo da EBD",                   desc: "Faça um estudo aprofundado do tema da aula da EBD e levante pelo menos uma dúvida.", tip: "Pesquise o tema da aula antes do domingo. Leia versículos relacionados e anote comparações entre passagens. Na aula, levante sua dúvida ou contribua com algo que descobriu.", points: 150, category: "Sinaxe", difficulty: "MÉDIO", frequency: "weekly" },
+  { id: 19, title: "Visitante na EBD",                  desc: "Leve um visitante para participar da EBD.", tip: "Convide com antecedência, não só no domingo de manhã. Explique o que é a EBD e o que a pessoa vai encontrar. Fique ao lado do visitante durante a aula para que se sinta acolhido.", points: 150, category: "Sinaxe", difficulty: "MÉDIO", frequency: "weekly" },
+  { id: 20, title: "Ministre um Conteúdo na EBD",       desc: "Prepare e ministre um conteúdo na EBD. Entre em acordo com o professor, se necessário, sobre o tempo e o conteúdo a ser apresentado.", tip: "Pesquise bem o assunto, use pelo menos 3 versículos e prepare um material visual se possível. Ensaie em voz alta antes do dia.", points: 700, category: "Sinaxe", difficulty: "MUITO DIFÍCIL", frequency: "once" },
+  { id: 32, title: "Cine Jovem: A Paixão de Cristo",    desc: "Participe do Cine Jovem com exibição do filme A Paixão de Cristo, seguido de roda de conversa com Pr. Nilson Cruz. Sábado, 21/03 às 16h30 na Semente Santa, Vilas do Atlântico. Entrada gratuita.", tip: "Chegue com antecedência para garantir seu lugar. Prepare seu coração para uma experiência marcante.", points: 150, category: "Sinaxe", difficulty: "MÉDIO", frequency: "once" },
+  { id: 33, title: "Leve um Convidado ao Cine Jovem",   desc: "Leve pelo menos um convidado para o Cine Jovem: A Paixão de Cristo.", tip: "Convide com antecedência e compartilhe os detalhes do evento: sábado 21/03 às 16h30 na Semente Santa, Vilas do Atlântico. Entrada gratuita.", points: 150, category: "Sinaxe", difficulty: "MÉDIO", frequency: "once" },
+  { id: 34, title: "Participar do GC",                      desc: "Participe do Grupo de Comunhão (GC) compartilhando experiências, testemunhos e leitura da Bíblia.", tip: "O GC é um espaço de comunhão e crescimento. Seja transparente, ouça os irmãos e contribua com algo que Deus tem falado à sua vida.", points: 100, category: "Sinaxe", difficulty: "FÁCIL", frequency: "biweekly" },
+  { id: 35, title: "Convidado para o GC",                   desc: "Leve pelo menos um convidado para participar do Grupo de Comunhão (GC).", tip: "Convide alguém que precisa de comunhão e pertencimento. Apresente o grupo e fique ao lado do convidado durante o encontro para que se sinta acolhido.", points: 150, category: "Sinaxe", difficulty: "MÉDIO", frequency: "biweekly" },
+];
+
+const CATEGORIES = ["Espiritualidade","Sabedoria","Resistência","Influência","Sinaxe"];
+const CATEGORY_COLORS = { Espiritualidade:"#7700ff", Sabedoria:"#00ccff", Resistência:"#ff4400", Influência:"#ffdd00", Sinaxe:"#00ff44" };
+const DIFFICULTIES = [
+  { label:"FÁCIL",         color:"#ffffff", pts:100 },
+  { label:"MÉDIO",         color:"#1a8800", pts:200 },
+  { label:"DIFÍCIL",       color:"#ff2255", pts:300 },
+  { label:"MUITO DIFÍCIL", color:"#cc0000", pts:450 },
+  { label:"ATALAIA",       color:"#bf00ff", pts:500 },
+];
+const DIFFICULTY_COLORS = Object.fromEntries(DIFFICULTIES.map(d => [d.label, d.color]));
+
+// Normaliza dificuldades antigas (sem acento) para o novo padrão
+const DIFFICULTY_NORMALIZE = {
+  "FACIL":"FÁCIL","MEDIO":"MÉDIO","DIFICIL":"DIFÍCIL",
+  "MUITO DIFICIL":"MUITO DIFÍCIL","ATALAIA":"ATALAIA",
+  "FÁCIL":"FÁCIL","MÉDIO":"MÉDIO","DIFÍCIL":"DIFÍCIL","MUITO DIFÍCIL":"MUITO DIFÍCIL",
+};
+function normalizeDifficulty(d) { return DIFFICULTY_NORMALIZE[d] || d; }
+
+// Retorna true se a missão pode ser concluída diretamente (sem foto)
+// Critério: dificuldade FÁCIL ou MÉDIO  E  frequência diária
+function podeConcluidaDireta(mission) {
+  const diff = normalizeDifficulty(mission.difficulty || "");
+  const freq = mission.frequency || "once";
+  return (diff === "FÁCIL" || diff === "MÉDIO") && freq === "daily";
+}
+
+const FREQUENCIES = [
+  { label:"ÚNICA",   value:"once",    color:"#9b30ff" },
+  { label:"DIÁRIA",  value:"daily",   color:"#d966ff" },
+  { label:"SEMANAL", value:"weekly",  color:"#ff4dbb" },
+  { label:"MENSAL",     value:"monthly",    color:"#00ffcc" },
+  { label:"QUINZENAL", value:"biweekly",  color:"#ff9900" },
+];
+
+
+const LEVEL_NAMES = ["APRENDIZ","SOLDADO","SENTINELA","ATALAIA","ANCIÃO","TRANSCENDENTE"];
+const LEVEL_NAME_COLORS = { "APRENDIZ":"#00ff44","SOLDADO":"#00ccff","SENTINELA":"#ffdd00","ATALAIA":"#ff4400","ANCIÃO":"#ff2255","TRANSCENDENTE":"#ffd700" };
+
+const WEEK_DAYS = [
+  { label:"Dom", value:0 }, { label:"Seg", value:1 }, { label:"Ter", value:2 },
+  { label:"Qua", value:3 }, { label:"Qui", value:4 }, { label:"Sex", value:5 }, { label:"Sáb", value:6 }
+];
+
+function getLevelIndex(levelName) {
+  const order = ["RECÉM-CONVERTIDO","APRENDIZ","SOLDADO","SENTINELA","ATALAIA","ANCIÃO","TRANSCENDENTE"];
+  return order.indexOf(levelName);
+}
+
+function isMissionLevelLocked(userId, mission) {
+  if (!mission.requiredLevel) return false;
+  const u = store.users.find(u => u.id === userId);
+  if (!u) return true;
+  const userLevel = getEffectiveLevelInfo(userId).name;
+  return getLevelIndex(userLevel) < getLevelIndex(mission.requiredLevel);
+}
+
+function isMissionDayLocked(mission) {
+  const days = mission.allowedDays;
+  if (!days || days.length === 0) return false;
+  const todayDow = nowBRT().getDay();
+  return !days.includes(todayDow);
+}
+
+function getAllowedDaysLabel(days) {
+  if (!days || days.length === 0) return null;
+  return days.map(d => WEEK_DAYS.find(w => w.value === d)?.label).filter(Boolean).join("·");
+}
+function getCategoryPoints(userId) {
+  const cats = { Espiritualidade:0, Sabedoria:0, Resistência:0, Influência:0, Sinaxe:0 };
+  store.submissions
+    .filter(s => s.userId === userId && s.status === "approved")
+    .forEach(s => {
+      const m = store.missions.find(m => m.id === s.missionId);
+      if (m && cats[m.category] !== undefined) cats[m.category] += m.points || 0;
+    });
+  return cats;
+}
+
+function getCategoryPointsByDay(userId, dateStr) {
+  const cats = { Espiritualidade:0, Sabedoria:0, Resistência:0, Influência:0, Sinaxe:0 };
+  store.submissions
+    .filter(s => s.userId === userId && s.status === "approved" && s.approvedDate === dateStr)
+    .forEach(s => {
+      const m = store.missions.find(m => m.id === s.missionId);
+      if (m && cats[m.category] !== undefined) cats[m.category] += m.points || 0;
+    });
+  return cats;
+}
+
+// Retorna true se o usuário qualifica para o Regente do Equilíbrio:
+// 2.500+ pts acumulados (total histórico) em pelo menos 3 habilidades distintas.
+// Usa getCategoryPoints que já soma todas as aprovações ever — não apenas da semana.
+function checkRegenteEquilibrio(userId) {
+  const u = store.users.find(u => u.id === userId);
+  if (!u) return false;
+  // Se foi rebaixado e ainda não reconquistou → não tem o arquétipo
+  if (u.regenteRevoked && !u.regenteReconquistado) return false;
+  const cats = getCategoryPoints(userId);
+  const qualifying = Object.values(cats).filter(v => v >= 2500);
+  return qualifying.length >= 3;
+}
+
+// Verifica e revoga o Regente quando há rebaixamento
+async function revogarRegenteSeNecessario(userId) {
+  const u = store.users.find(u => u.id === userId);
+  if (!u || u.role === "admin") return false;
+  const tinha = checkRegenteEquilibrioSemRevoke(userId);
+  if (!tinha) return false;
+  // Marca como revogado e zera reconquista
+  await fbPatch(`users/${userId}`, { regenteRevoked: true, regenteReconquistado: false, regenteReconquistaMissoes: [] });
+  store.users = store.users.map(uu => uu.id === userId
+    ? { ...uu, regenteRevoked: true, regenteReconquistado: false, regenteReconquistaMissoes: [] }
+    : uu
+  );
+  notify();
+  return true;
+}
+
+// Versão sem checar regenteRevoked — usada para saber se os pontos qualificam
+function checkRegenteEquilibrioSemRevoke(userId) {
+  const cats = getCategoryPoints(userId);
+  const qualifying = Object.values(cats).filter(v => v >= 2500);
+  return qualifying.length >= 3;
+}
+
+// Registra missão de reconquista do Regente (missão requiredLevel=ANCIÃO, frequency=once)
+async function registrarMissaoReconquista(userId, missionId) {
+  const u = store.users.find(u => u.id === userId);
+  if (!u || !u.regenteRevoked || u.regenteReconquistado) return false;
+  const missoes = [...new Set([...(u.regenteReconquistaMissoes || []), missionId])];
+  const reconquistado = missoes.length >= 3;
+  const patch = { regenteReconquistaMissoes: missoes };
+  if (reconquistado) patch.regenteReconquistado = true;
+  await fbPatch(`users/${userId}`, patch);
+  store.users = store.users.map(uu => uu.id === userId ? { ...uu, ...patch } : uu);
+  notify();
+  return reconquistado;
+}
+
+const ARCHETYPES_PRIMARY = {
+  Espiritualidade: { title:"GUARDIÃO DA FÉ",       pilar:"Pilar da Oração",    color:"#7700ff", desc:"Aquele que vigia e mantém a retaguarda segura, garantindo que o grupo permaneça focado e fortalecido internamente para enfrentar desafios externos. É a base estratégica que transforma a intenção individual em sintonia coletiva com o projeto." },
+  Sabedoria:       { title:"ERUDITO DA ALIANÇA",    pilar:"Pilar da Palavra",   color:"#00ccff", desc:"Aquele que utiliza a profundidade bíblica para solucionar conflitos e orientar o grupo pela rota da integridade e da verdade. Utiliza o exame das Escrituras como base para o processo decisório, transformando a informação em consciência ética e prática de vida." },
+  Resistência:     { title:"ESCUDO DA PROMESSA",    pilar:"Pilar do Jejum",     color:"#ff4400", desc:"Aquele que se mantém estável em crises através da autodisciplina. Utiliza a restrição para expansão de poder, eliminando distrações e fraquezas ao canalizar sua energia em um propósito único, convertendo a vulnerabilidade em autoridade e domínio." },
+  Influência:      { title:"ARAUTO DO REINO",       pilar:"Pilar da Expansão",  color:"#ffdd00", desc:"Aquele que rompe a inércia e abre novas frentes de atuação, impulsionando o grupo a superar limites e romper barreiras. Com coragem e clareza de propósito, ele garante que a mensagem e os valores alcancem novos patamares, expandindo e alcançando onde ninguém mais chegou." },
+  Sinaxe:          { title:"ARQUITETO DA UNIDADE",  pilar:"Pilar da Comunhão",  color:"#00ff44", desc:"Aquele que promove a paz e a cooperação, garantindo que o grupo esteja perfeitamente alinhado. Atua na manutenção das conexões internas, assegurando que o suporte mútuo potencialize cada membro e transforme o coletivo em uma estrutura coesa e resiliente." },
+};
+
+const ARCHETYPES_SECONDARY = {
+  "Espiritualidade+Sabedoria":   { title:"CONSELHEIRO ILUMINADO",    color:"#aa44ff", desc:"Aquele que une a percepção espiritual à sabedoria dos céus apontando direções precisas. Atua como o guia que traduz princípios elevados em orientações estratégicas, iluminando o caminho do grupo com clareza ética e garantindo que cada decisão esteja fundamentada na integridade e no discernimento prático." },
+  "Espiritualidade+Resistência": { title:"PALADINO DA CONVICÇÃO",    color:"#ff7700", desc:"Aquele cuja fé é forjada pela disciplina e pelo sacrifício. É a força inabalável que não retrocede diante da oposição, utilizando sua resistência espiritual como uma armadura que protege a integridade do propósito contra qualquer pressão externa." },
+  "Espiritualidade+Influência":  { title:"VANGUARDA DA CONSCIÊNCIA", color:"#cc88ff", desc:"Aquele que utiliza o peso dos valores espirituais para inspirar e mobilizar multidões. Ele não apenas lidera, mas desperta o propósito nos outros, garantindo que a expansão do grupo seja sempre pautada por uma ética superior e um significado transcendente." },
+  "Espiritualidade+Sinaxe":      { title:"GUARDIÃO DO ELO",          color:"#44aaff", desc:"Aquele que sustenta a atmosfera espiritual da unidade. Sua função é garantir que a conexão entre os membros não seja apenas técnica, mas profunda e sagrada, zelando pela saúde das relações e pela pureza da comunhão no coletivo." },
+  "Sabedoria+Resistência":       { title:"ESTRATEGISTA INABALÁVEL",  color:"#ff8800", desc:"Aquele que combina o cálculo mental preciso com a resiliência emocional. É capaz de manter o planejamento estratégico mesmo sob fogo cruzado, adaptando a rota sem perder a essência e garantindo que o grupo suporte o processo até a vitória final." },
+  "Sabedoria+Influência":        { title:"NAVEGADOR ESTRATEGISTA",   color:"#88ddff", desc:"Aquele que traça as rotas de expansão com inteligência e autoridade. Utiliza o conhecimento profundo do terreno para convencer e guiar o grupo por caminhos de menor resistência e maior impacto, transformando visão teórica em movimento coordenado." },
+  "Sabedoria+Sinaxe":            { title:"CATALISADOR DE SINERGIAS", color:"#00ffaa", desc:"Aquele que usa o discernimento para identificar o potencial de cada membro e ajustá-los em perfeita harmonia. Atua como o engenheiro das relações, otimizando a colaboração interna através de uma compreensão profunda das competências individuais." },
+  "Resistência+Influência":      { title:"ESTANDARTE DA CORAGEM",    color:"#ffaa00", desc:"Aquele que lidera pelo exemplo de resiliência, tornando-se uma referência de bravura para os demais. Sua capacidade de suportar adversidades sem vacilar rompe a inércia do medo e impulsiona o grupo a avançar sobre novos territórios com ousadia." },
+  "Resistência+Sinaxe":          { title:"ESCUDO DA UNIDADE",        color:"#44ff88", desc:"Aquele que protege a coesão do grupo através da autodisciplina e do suporte mútuo. Em tempos de crise, ele absorve os impactos que poderiam dividir o coletivo, mantendo a estrutura unida e firme contra as tentativas de fragmentação interna." },
+  "Influência+Sinaxe":           { title:"EMBAIXADOR DA UNIDADE",    color:"#aaff44", desc:"Aquele que projeta a força da comunhão para o exterior. Ele expande a influência do grupo mostrando o poder do alinhamento interno, transformando a união dos membros no principal argumento de autoridade para conquistar novas frentes." },
+};
+
+function getArchetype(userId) {
+  const u = store.users.find(u => u.id === userId);
+  // Verifica se tem o Regente ativo (pontos + não revogado, ou já reconquistou)
+  const regenteAtivo = checkRegenteEquilibrio(userId);
+  if (regenteAtivo) {
+    return { title:"REGENTE DO EQUILÍBRIO", color:"#ffd700", pilar:"Convergência Plena", desc:"Aquele que se estabelece como o ponto de estabilidade máxima, atuando como a personificação da integridade que sustenta todo o ecossistema em qualquer estação. Representa o estágio de maturidade plena onde a disciplina dos pilares se torna natureza e a liderança se manifesta como serviço puro. É o eixo central que harmoniza a força, a sabedoria e a unidade, garantindo que o propósito permaneça inabalável enquanto o grupo avança em total sincronia." };
+  }
+
+  const cats = getCategoryPoints(userId);
+  const entries = Object.entries(cats).sort((a,b) => b[1] - a[1]);
+  const [top1, top2] = entries;
+  if (!top1 || top1[1] === 0) return null;
+
+  if (top2 && top2[1] > 0) {
+    const key1 = [top1[0], top2[0]].sort().join("+");
+    const key2 = [top2[0], top1[0]].sort().join("+");
+    const combo = ARCHETYPES_SECONDARY[key1] || ARCHETYPES_SECONDARY[key2];
+    if (combo) return { ...combo };
+  }
+
+  const primary = ARCHETYPES_PRIMARY[top1[0]];
+  if (primary) return { ...primary };
+  return null;
+}
+
+// ── Helper: verifica se usuário tem o Regente ativo ──────────────────────────
+function isRegente(userId) {
+  return checkRegenteEquilibrio(userId);
+}
+
+// ── Componente: badge visual do Regente do Equilíbrio ────────────────────────
+function RegenteBadge({ userId, style }) {
+  if (!isRegente(userId)) return null;
+  return (
+    <span className="regente-badge" style={style} title="Regente do Equilíbrio — Convergência Plena">
+      <span className="regente-star-1">✦</span>
+      <span className="regente-text">Regente do Equilíbrio</span>
+      <span className="regente-star-2">✦</span>
+    </span>
+  );
+}
+
+function getLevelInfo(points) {
+  const levels = [
+    { name:"RECÉM-CONVERTIDO", min:0,     max:299,      color:"#a0a0cc" },
+    { name:"APRENDIZ",         min:300,   max:699,      color:"#00ff44" },
+    { name:"SOLDADO",          min:700,   max:1199,     color:"#00ccff" },
+    { name:"SENTINELA",        min:1200,  max:1999,     color:"#ffdd00" },
+    { name:"ATALAIA",          min:2000,  max:2999,     color:"#ff4400" },
+    { name:"ANCIÃO",           min:3000,  max:9999,     color:"#ff2255" },
+    { name:"TRANSCENDENTE",    min:10000, max:Infinity, color:"#ffd700" },
+  ];
+  return levels.find(l => points >= l.min && points <= l.max) || levels[0];
+}
+
+// TRANSCENDENTE exige DOIS critérios simultâneos:
+//   1. 10.000+ pontos
+//   2. Arquétipo ativo = Regente do Equilíbrio (verificado por checkRegenteEquilibrio)
+// Se tiver 10k pts mas NÃO tiver o arquétipo → permanece exibido como ANCIÃO.
+// Essa função deve ser usada em qualquer lugar que exibe o nível ao usuário.
+function getEffectiveLevelInfo(userId) {
+  const u = store.users.find(u => u.id === userId);
+  if (!u) return getLevelInfo(0);
+  const raw = getLevelInfo(u.points);
+  if (raw.name === "TRANSCENDENTE" && !checkRegenteEquilibrio(userId)) {
+    // pontos OK mas arquétipo ainda não atingido — exibe ANCIÃO
+    return { name:"ANCIÃO", min:3000, max:9999, color:"#ff2255" };
+  }
+  return raw;
+}
+
+// ─── Supabase ────────────────────────────────────────────────────────────────
+// SEGURANÇA: Esta chave anon é pública por natureza.
+// ── Checklist de segurança recomendado no Supabase: ──────────────────────────
+// 1. RLS habilitado em TODAS as tabelas (users, submissions, missions, historico_pontos)
+// 2. Policy INSERT em submissions: auth.uid() = user_id  (usuário só insere o próprio)
+// 3. Policy UPDATE em users: auth.uid() = id  (usuário só edita o próprio perfil)
+// 4. Policy SELECT em missions: pública (read-only para todos)
+// 5. Points increment via DB Function/RPC com SECURITY DEFINER (já implementado via increment_points)
+// 6. Edge Function para validação server-side de pontuação (melhoria futura recomendada)
+// ─────────────────────────────────────────────────────────────────────────────
+// ── Configuração de ambiente ─────────────────────────────────────────────────
+const SUPABASE_URL = "https://oyvvlbyxlaetlghzgjam.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95dnZsYnl4bGFldGxnaHpnamFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2Mzc1NDksImV4cCI6MjA5MDIxMzU0OX0.4JpnIymqZOgNnw819I_o8qJq3BwOuvU4XLZ_w79Npqw";
+
+// ── MODO ACAMPAMENTO (Acampa Seed 2026) ──────────────────────────────────────
+// Durante o período do acampamento:
+//   • Streaks não resetam por falta de login
+//   • Rebaixamentos são completamente suspensos
+//   • O painel de Gincana fica disponível para o ADM
+const ACAMPA_DATES = { start: '2026-03-31', end: '2026-05-03' };
+
+function isAcampamentoAtivo() {
+  try {
+    const hoje = new Date().toISOString().split('T')[0];
+    return hoje >= ACAMPA_DATES.start && hoje <= ACAMPA_DATES.end;
+  } catch(e) { return false; }
+}
+
+// Pontuação de cada scan de QR Code da Gincana
+const GINCANA_PONTOS_SCAN = 50;
+
+// Equipes reais do Acampa Seed 2026
+const GINCANA_EQUIPES = ['lion', 'sentinel', 'prophetic', 'holy'];
+
+const GINCANA_META = {
+  lion:      { nome: 'Lion Heart',       cor: '#ff3333', emoji: '🔴', lideres: 'Jamile & Edu',              membros: ['Tyci','Raquel Soares','Emile','Gabriel','Samuel Wesley'] },
+  sentinel:  { nome: 'Sentinel Bulls',   cor: '#9b30ff', emoji: '🟣', lideres: 'Rebeca & Raquel',           membros: ['Thainá','Amanda','David','Alexandre','Asafe'] },
+  prophetic: { nome: 'Prophetic Eagles', cor: '#00aaff', emoji: '🔵', lideres: 'Yan & Silas',               membros: ['Letícia','Bruna','Samuel','Nicolas','Rodrigo'] },
+  holy:      { nome: 'Holy Warriors',    cor: '#e0e0e0', emoji: '⚪', lideres: 'Matheus Saymon & George',   membros: ['Duda Maria','Suellen','Elion','Vinicius','Matheus'] },
+};
+
+// Credita pontos em massa para todos os membros de uma equipe
+async function creditarEquipe(equipeLeaderId, motivo) {
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const store = getStore();
+  const lider = store.users.find(u => u.id === equipeLeaderId);
+  if (!lider || !lider.equipeId) return { ok: false, erro: 'Líder sem equipe vinculada.' };
+  const membros = store.users.filter(u => u.equipeId === lider.equipeId && u.role !== 'admin');
+  if (!membros.length) return { ok: false, erro: 'Nenhum membro nessa equipe.' };
+  const pts = GINCANA_PONTOS_SCAN;
+  const resultados = await Promise.allSettled(membros.map(async (m) => {
+    await sb.rpc('increment_points', { player_id: m.id, row_points: pts });
+    await registrarHistorico(m.id, 'gincana', pts, motivo || `Gincana – Equipe ${lider.equipeId}`, m.points);
+    await fbPatch(`users/${m.id}`, {});
+  }));
+  const ok = resultados.filter(r => r.status === 'fulfilled').length;
+  return { ok: true, creditados: ok, total: membros.length, equipe: lider.equipeId };
+}
+
+// Atribui um jovem a uma equipe da Gincana
+async function atribuirEquipe(userId, equipeId) {
+  if (!GINCANA_EQUIPES.includes(equipeId)) return { ok: false, erro: 'Equipe inválida.' };
+  await fbPatch(`users/${userId}`, { equipeId });
+  const store = getStore();
+  store.users = store.users.map(u => u.id === userId ? { ...u, equipeId } : u);
+  notify();
+  return { ok: true };
+}
+
+async function sbQuery(table, filters={}, limit=1000) {
+  if (!_credenciaisOk()) return null;
+  try {
+    let url=`${SUPABASE_URL}/rest/v1/${table}?select=*&limit=${limit}`;
+    for(const [k,v] of Object.entries(filters)) url+=`&${k}=eq.${v}`;
+    const r=await fetch(url,{headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,"Prefer":"count=none"}});
+    return r.ok?r.json():null;
+  } catch(e){return null;}
+}
+async function sbInsert(table,data) {
+  if (!_credenciaisOk()) return null;
+  try {
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/${table}`,{method:"POST",headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,"Content-Type":"application/json",Prefer:"return=representation"},body:JSON.stringify(data)});
+    const res=await r.json();
+    if(!r.ok){console.error('[Supabase] Erro ao inserir em',table,res);return null;}
+    return Array.isArray(res)?res[0]:res;
+  } catch(e){console.error('[Supabase] Falha de rede em sbInsert:',e);return null;}
+}
+async function sbUpdate(table,id,data) {
+  if (!_credenciaisOk()) return;
+  try {
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`,{method:"PATCH",headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,"Content-Type":"application/json","Prefer":"return=minimal"},body:JSON.stringify(data)});
+    if(!r.ok){const res=await r.json();console.error('[Supabase] Erro ao atualizar',table,id,res);}
+  } catch(e){console.error('[Supabase] Falha de rede em sbUpdate:',e);}
+}
+async function sbDelete(table,id) {
+  if (!_credenciaisOk()) return;
+  try {
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`,{method:"DELETE",headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`}});
+    if(!r.ok){console.error('[Supabase] Erro ao deletar',table,id);}
+  } catch(e){console.error('[Supabase] Falha de rede em sbDelete:',e);}
+}
+// Guard global: bloqueia TODAS as chamadas ao Supabase se as credenciais
+// não estiverem configuradas, evitando loops de erro no console.
+function _credenciaisOk() {
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    // Log apenas uma vez para não poluir o console
+    if (!window.__mlup_cred_warned) {
+      window.__mlup_cred_warned = true;
+      console.error(
+        "[mlup] Operação Supabase cancelada: credenciais ausentes.\n" +
+        "Crie _env.js a partir de _env.example.js e recarregue a página."
+      );
+    }
+    return false;
+  }
+  return true;
+}
+
+async function sbUpsert(table,data) {
+  if (!_credenciaisOk()) return;
+  try {
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/${table}`,{method:"POST",headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,"Content-Type":"application/json",Prefer:"resolution=merge-duplicates"},body:JSON.stringify(data)});
+    if(!r.ok){const res=await r.json();console.error('[Supabase] Erro ao salvar em',table,res);}
+  } catch(e){console.error('[Supabase] Falha de rede em sbUpsert:',e);}
+}
+const CAMEL_SNAKE={streakDays:"streak_days",streakRecord:"streak_record",missedDays:"missed_days",lastActiveDay:"last_active_day",lastLoginBonus:"last_login_bonus",lastDemotionDay:"last_demotion_day",lastPromotionDay:"last_promotion_day",lastDivergenciaCheck:"last_divergencia_check",dailyPoints:"daily_points",completedMissions:"completed_missions",regenteRevoked:"regente_revoked",regenteReconquistado:"regente_reconquistado",regenteReconquistaMissoes:"regente_reconquista_missoes",fcmToken:"fcm_token",fullName:"full_name",imageUrl:"image_url",imageBase64:"image_base64",userId:"user_id",missionId:"mission_id",createdAt:"created_at",pontosAntes:"pontos_antes",pontosDepois:"pontos_depois",approvedDate:"approved_date",approvedWeek:"approved_week",approvedMonth:"approved_month",approvedBiweekly:"approved_biweekly",requiredLevel:"required_level",allowedDays:"allowed_days"};
+const SNAKE_CAMEL=Object.fromEntries(Object.entries(CAMEL_SNAKE).map(([c,s])=>[s,c]));
+const TABLE_MAP={users:"users",submissions:"submissions",missions:"missions",historico_pontos:"historico_pontos",alertas_divergencia:"alertas_divergencia"};
+function toSnake(data){const s={};for(const[k,v]of Object.entries(data))s[CAMEL_SNAKE[k]||k]=v;return s;}
+function toCamel(data){const c={};for(const[k,v]of Object.entries(data))c[SNAKE_CAMEL[k]||k]=v;return c;}
+// ── Camada de acesso ao Supabase ──
+async function supabaseGet(path) {
+  const[table,id]=path.split("/");const t=TABLE_MAP[table];if(!t)return null;
+  if(id){
+    // historico_pontos: filtra por user_id, nao por id primario
+    const filter=t==="historico_pontos"?{user_id:id}:{id};
+    const rows=await sbQuery(t,filter);if(!rows||!rows.length)return null;
+    if(t==="historico_pontos")return rows.reduce((a,r)=>{const c=toCamel(r);return{...a,[c.id]:c};},{});
+    return toCamel(rows[0]);
+  }
+  const rows=await sbQuery(t);if(!rows)return null;
+  return rows.reduce((a,r)=>{const c=toCamel(r);return{...a,[c.id]:c};},{});
+}
+async function supabaseSet(path,data) {
+  const[table]=path.split("/");const t=TABLE_MAP[table];if(!t)return;
+  if(typeof data==="object"&&data!==null&&!data.id){for(const[id,item]of Object.entries(data))await sbUpsert(t,{...toSnake(item),id});return;}
+  await sbUpsert(t,toSnake(data));
+}
+async function supabasePush(path,data) {
+  const[table]=path.split("/");const t=TABLE_MAP[table];if(!t)return{name:crypto.randomUUID()};
+  const id=crypto.randomUUID();await sbInsert(t,{...toSnake(data),id});return{name:id};
+}
+async function supabasePatch(path,data) {
+  const[table,id]=path.split("/");const t=TABLE_MAP[table];if(!t||!id)return;
+  await sbUpdate(t,id,toSnake(data));
+}
+async function supabaseDelete(path) {
+  const[table,id]=path.split("/");const t=TABLE_MAP[table];if(!t||!id)return;
+  await sbDelete(t,id);
+}
+// Aliases legados — mantidos para compatibilidade interna durante refatoração gradual
+const fbGet    = supabaseGet;
+const fbSet    = supabaseSet;
+const fbPush   = supabasePush;
+const fbPatch  = supabasePatch;
+const fbDelete = supabaseDelete;
+// ─────────────────────────────────────────────────────────────────────────────
+const CLOUDINARY_UPLOAD_URL = "https://api.cloudinary.com/v1_1/dbocy2dpp/image/upload";
+const CLOUDINARY_UPLOAD_PRESET = "acampa_seed";
+
+async function uploadToCloudinary(base64Data) {
+  try {
+    const formData = new FormData();
+    formData.append("file", base64Data);
+    formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+    const res = await fetch(CLOUDINARY_UPLOAD_URL, { method:"POST", body: formData });
+    const data = await res.json();
+    return data.secure_url || null;
+  } catch(e) { return null; }
+}
+
+
+
+async function cleanReviewedImages() {
+  const reviewed = store.submissions.filter(s =>
+    (s.status==="approved" || s.status==="rejected") && (s.imageBase64 || s.imageUrl)
+  );
+  let count = 0;
+  for (const sub of reviewed) {
+    await fbPatch(`submissions/${sub.id}`, { imageBase64: null, imageUrl: null });
+    store.submissions = store.submissions.map(s =>
+      s.id===sub.id ? {...s, imageBase64:null, imageUrl:null} : s
+    );
+    count++;
+  }
+  notify();
+  return count;
+}
+
+
+
+let store = { users:[], submissions:[], missions:[], loaded:false, dbError:false };
+let storeListeners = [];
+const subscribe = fn => { storeListeners.push(fn); return () => { storeListeners = storeListeners.filter(l => l !== fn); }; };
+const notify = () => storeListeners.forEach(fn => fn({...store}));
+const getStore = () => ({...store});
+
+
+function calcularStreakRetroativo(u) {
+  const dailyPoints = u.dailyPoints || {};
+  const lvl = getLevelInfo(u.points);
+  const goal = LEVEL_DAILY_GOAL[lvl.name] || 0;
+  if (goal === 0) return { streakDays: 0, streakRecord: u.streakRecord || 0 };
+  const today = nowBRT();
+  const dates = [];
+  for (let i = 0; i < 90; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    dates.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`);
+  }
+  let streak = 0;
+  for (const date of dates) {
+    if ((dailyPoints[date] || 0) >= goal) streak++;
+    else break;
+  }
+  let best = u.streakRecord || 0;
+  let temp = 0;
+  for (const date of [...dates].reverse()) {
+    if ((dailyPoints[date] || 0) >= goal) { temp++; if (temp > best) best = temp; }
+    else temp = 0;
+  }
+  return { streakDays: streak, streakRecord: Math.max(best, streak) };
+}
+
+// ─── Carga inicial via Supabase REST ─────────────────────────────────────────
+async function loadFromSupabase() {
+  try {
+    const [usersRaw, subsRaw, missionsRaw] = await Promise.all([
+      supabaseGet("users"), supabaseGet("submissions"), supabaseGet("missions")
+    ]);
+    let users = usersRaw ? Object.entries(usersRaw).map(([id,v]) => ({...v, id})) : [];
+    if (!users.find(u => u.id === "admin")) {
+      // Admin já existe no banco — não recria nem expõe senha no frontend
+      console.warn("[GameOps] Admin não encontrado no banco. Crie manualmente via SQL Editor do Supabase.");
+    }
+    let submissions = subsRaw ? Object.entries(subsRaw).map(([id,v]) => ({...v, id})) : [];
+    let missions;
+    if (missionsRaw && Object.keys(missionsRaw).length > 0) {
+      missions = Object.entries(missionsRaw)
+        .map(([,v]) => v).filter(m => m && m.id)
+        .map(m => ({ ...m, difficulty: normalizeDifficulty(m.difficulty || "") }));
+    } else {
+      missions = INITIAL_MISSIONS;
+      const obj = {}; INITIAL_MISSIONS.forEach(m => { obj[m.id] = m; });
+      await fbSet("missions", obj);
+    }
+    users = users.map(u => {
+      if (u.role === "admin" || u.streakDays !== undefined) return u;
+      const { streakDays, streakRecord } = calcularStreakRetroativo(u);
+      return { ...u, streakDays, streakRecord };
+    });
+    for (const u of users) {
+      if (u.role === "admin") continue;
+      if ((usersRaw?.[u.id] || {}).streakDays === undefined) {
+        await fbPatch(`users/${u.id}`, { streakDays: u.streakDays, streakRecord: u.streakRecord });
+      }
+    }
+    // Só sobrescreve o store se o real-time ainda não assumiu o controle.
+    // Se subscribeSupabase já recebeu o primeiro evento enquanto este fetch
+    // ainda estava em voo, descartar o resultado REST evita o efeito flicker.
+    if (!isUsingRealtime) {
+      store = { users, submissions, missions, loaded:true, dbError:false };
+      notify();
+    }
+  } catch(e) {
+    if (!isUsingRealtime) {
+      store = { ...store, loaded:true, dbError:true };
+      notify();
+    }
+  }
+}
+
+// ─── GameOps: Controle de fonte de verdade (Supabase Realtime via WebSocket) ──
+let isUsingRealtime = false;
+let _pollingInterval = null;
+
+// subscribeDB → Supabase Realtime (WebSocket) com fallback para polling
+function subscribeDB(onReady) {
+  let active = true;
+  let realtimeChannel = null;
+
+  // Carga inicial dos dados
+  async function initialLoad() {
+    if (!active) return;
+    try {
+      await loadFromSupabase();
+      if (!isUsingRealtime) {
+        isUsingRealtime = true;
+        if (typeof onReady === "function") onReady();
+      }
+    } catch(e) {
+      if (!isUsingRealtime) {
+        store = { ...store, loaded: true, dbError: true };
+        notify();
+        if (typeof onReady === "function") onReady();
+      }
+    }
+  }
+
+  // Tenta conectar via Supabase Realtime (WebSocket)
+  function conectarRealtime() {
+    try {
+      const supabaseClient = window.supabase?.createClient
+        ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+        : null;
+
+      if (!supabaseClient) {
+        // Supabase client não disponível — fallback para polling a cada 30s
+        console.warn('[GameOps] Supabase Realtime indisponível, usando polling.');
+        _pollingInterval = setInterval(() => { if (active) loadFromSupabase().catch(()=>{}); }, 30000);
+        return;
+      }
+
+      // Assina mudanças nas tabelas principais via WebSocket
+      realtimeChannel = supabaseClient
+        .channel('levelup-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'users' },       () => { if (active) loadFromSupabase().catch(()=>{}); })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions' }, () => { if (active) loadFromSupabase().catch(()=>{}); })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' },    () => { if (active) loadFromSupabase().catch(()=>{}); })
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+          }
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.warn('[GameOps] Realtime com problema, ativando polling de backup.');
+            if (!_pollingInterval) {
+              _pollingInterval = setInterval(() => { if (active) loadFromSupabase().catch(()=>{}); }, 30000);
+            }
+          }
+        });
+    } catch(e) {
+      console.warn('[GameOps] Erro ao conectar Realtime, usando polling:', e);
+      _pollingInterval = setInterval(() => { if (active) loadFromSupabase().catch(()=>{}); }, 30000);
+    }
+  }
+
+  initialLoad();
+  conectarRealtime();
+
+  return function cleanup() {
+    active = false;
+    isUsingRealtime = false;
+    if (realtimeChannel) { try { realtimeChannel.unsubscribe(); } catch(e){} realtimeChannel = null; }
+    if (_pollingInterval) { clearInterval(_pollingInterval); _pollingInterval = null; }
+  };
+}
+// ────────────────────────────────────────────────────────────────────────────
+
+// ── Funções de data no fuso oficial de Brasília / Salvador (UTC-3) ──────────
+// toISOString() usava UTC e virava o dia às 21h-22h no Brasil — corrigido.
+function nowBRT() {
+  return new Date(new Date().toLocaleString("en-US", { timeZone: "America/Bahia" }));
+}
+function todayStr() {
+  const d = nowBRT();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function monthStr() {
+  const d = nowBRT();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+}
+function biweeklyStr() {
+  const d = nowBRT();
+  const week = Math.floor(d.getDate() / 15);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${week}`;
+}
+function weekStr() {
+  const d = nowBRT();
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day===0 ? -6 : 1);
+  const mon = new Date(d);
+  mon.setDate(diff);
+  return `${mon.getFullYear()}-${String(mon.getMonth()+1).padStart(2,"0")}-${String(mon.getDate()).padStart(2,"0")}`;
+}
+
+// ─── GameOps: data do servidor → usa hora local em BRT (UTC-3 fixo) ─────────
+async function getServerDateStr() {
+  // Retorna a data atual no fuso de Brasília/Salvador (UTC-3).
+  // Usa nowBRT() — sem API externa, dispositivo deve estar com hora correta.
+  return todayStr();
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+const LEVEL_DAILY_GOAL  = { "RECÉM-CONVERTIDO":0,"APRENDIZ":100,"SOLDADO":200,"SENTINELA":350,"ATALAIA":500,"ANCIÃO":700,"TRANSCENDENTE":1000 };
+const LEVEL_MIN_POINTS  = { "RECÉM-CONVERTIDO":0,"APRENDIZ":300,"SOLDADO":700,"SENTINELA":1200,"ATALAIA":2000,"ANCIÃO":3000,"TRANSCENDENTE":10000 };
+// Rebaixamento: vai para o TETO do nível anterior (não o piso)
+const DEMOTION_TARGET   = { "APRENDIZ":299,"SOLDADO":699,"SENTINELA":1199,"ATALAIA":1999,"ANCIÃO":2999,"TRANSCENDENTE":9999 };
+
+// ─── Sistema de Streak ──────────────────────────────────────────────────────
+const STREAK_BONUS_LOGIN = 50; // pts por dia de acesso
+
+const STREAK_MARCOS = [
+  { dias: 7,  bonus: 100, titulo: "Guerreiro da Semana" },
+  { dias: 14, bonus: 150, titulo: "Sentinela Fiel"      },
+  { dias: 21, bonus: 200, titulo: "Paladino Inabalável"  },
+  { dias: 30, bonus: 250, titulo: "Lendário do Reino"   },
+];
+
+const STREAK_FASES = [
+  { min: 0,  max: 0,  icon:"🌑", fase: "Semente",           versiculo: "Se o grão de trigo não cair na terra e não morrer, continuará ele só. Mas se morrer, dará muito fruto.", ref: "João 12:24 (NVI)" },
+  { min: 1,  max: 2,  icon:"🌱", fase: "Brotando",           versiculo: "A terra por si própria produz o grão: primeiro o broto, depois a espiga e, por fim, o grão cheio na espiga.", ref: "Marcos 4:28 (NVI)" },
+  { min: 3,  max: 6,  icon:"🌿", fase: "Criando Raízes",     versiculo: "Continuem a viver nele, enraizados e edificados nele, firmados na fé.", ref: "Colossenses 2:7 (NVI)" },
+  { min: 7,  max: 13, icon:"🌳", fase: "Crescimento Firme",  versiculo: "Os justos florescerão como a palmeira, crescerão como o cedro do Líbano.", ref: "Salmos 92:12 (NVI)" },
+  { min: 14, max: 20, icon:"🍃", fase: "Folhagem Viva",       versiculo: "Não receia quando vem o calor, suas folhas estão sempre verdes.", ref: "Jeremias 17:8 (NVI)" },
+  { min: 21, max: 25, icon:"🌸", fase: "Primeiras Flores",   versiculo: "Israel brotará e florescerá, e encherá o mundo inteiro de frutos.", ref: "Isaías 27:6 (NVI)" },
+  { min: 26, max: Infinity, icon:"🍎", fase: "Frutificação Plena", versiculo: "Ele é como árvore plantada à beira de águas correntes: dá fruto no tempo certo e suas folhas não murcham.", ref: "Salmos 1:3 (NVI)" },
+];
+
+// Fase especial: Murchando (quando missedDays >= 1)
+const STREAK_FASE_PERIGO = {
+  icon: "🍂", fase: "Murchando",
+  versiculo: "Esteja atento! Fortaleça o que resta e que estava para morrer.",
+  ref: "Apocalipse 3:2 (NVI)"
+};
+
+function getStreakFase(dias, emPerigo) {
+  if (emPerigo) return STREAK_FASE_PERIGO;
+  return STREAK_FASES.find(f => dias >= f.min && dias <= f.max) || STREAK_FASES[0];
+}
+
+async function checkLoginBonus(userId) {
+  const u = store.users.find(u => u.id === userId);
+  if (!u || u.role === "admin") return null;
+
+  // ── Busca data do servidor para garantir sincronismo entre todos os usuários ─
+  const today = await getServerDateStr();
+
+  // Já recebeu bônus hoje — não duplicar
+  if (u.lastLoginBonus === today) return null;
+
+  const last = u.lastLoginBonus || null;
+  const now  = new Date(today);
+  const lastDate = last ? new Date(last) : null;
+  const diffDays = lastDate ? Math.floor((now - lastDate) / 86400000) : 0;
+
+  // Streak: mantém se acessou ontem (diff=1), zera se sumiu mais de 1 dia
+  const streakAtual  = (u.streakDays || 0);
+  const novoStreak   = diffDays === 1 ? streakAtual + 1 : diffDays === 0 ? streakAtual : 1;
+  const novoRecord   = Math.max(u.streakRecord || 0, novoStreak);
+
+  // Bônus base de login
+  let totalBonus = STREAK_BONUS_LOGIN;
+  let marcoAlcancado = null;
+
+  // Verifica marcos de sequência
+  const marco = STREAK_MARCOS.find(m => m.dias === novoStreak);
+  if (marco) {
+    totalBonus += marco.bonus;
+    marcoAlcancado = marco;
+  }
+
+  const novosPontos = u.points + totalBonus;
+  const dailyPoints = { ...(u.dailyPoints || {}), [today]: ((u.dailyPoints || {})[today] || 0) + totalBonus };
+
+  // Incrementa pontos via RPC atômica (evita race condition)
+  const _sbBonus = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  await _sbBonus.rpc('increment_points', { player_id: userId, row_points: totalBonus });
+  await fbPatch(`users/${userId}`, {
+    dailyPoints,
+    lastLoginBonus: today,
+    streakDays: novoStreak,
+    streakRecord: novoRecord,
+  });
+  store.users = store.users.map(uu => uu.id === userId
+    ? { ...uu, points: novosPontos, dailyPoints, lastLoginBonus: today, streakDays: novoStreak, streakRecord: novoRecord }
+    : uu
+  );
+
+  await registrarHistorico(userId, "bonus_login", STREAK_BONUS_LOGIN, `Bônus de acesso diário`, u.points);
+  if (marcoAlcancado) {
+    await registrarHistorico(userId, "bonus_streak", marcoAlcancado.bonus, `Marco: ${marcoAlcancado.titulo} (${marcoAlcancado.dias} dias)`, novosPontos - marcoAlcancado.bonus);
+  }
+
+  notify();
+  return { bonus: totalBonus, streak: novoStreak, record: novoRecord, marco: marcoAlcancado };
+}
+
+function isMissionLocked(userId, missionId) {
+  const mission = store.missions.find(m => m.id === missionId);
+  if (!mission) return false;
+  const freq = mission.frequency || "once";
+  // Filtra apenas submissions genuinamente aprovadas (com approvedDate preenchido)
+  // Submissions estornadas têm status="rejected" e não chegam aqui
+  const approved = store.submissions.filter(s => s.userId===userId && s.missionId===missionId && s.status==="approved" && s.approvedDate !== null && s.approvedDate !== undefined);
+  if (freq === "once") return approved.length > 0;
+  // Diária: compara approvedDate com hoje em BRT
+  if (freq === "daily") return approved.some(s => s.approvedDate === todayStr());
+  // Semanal/mensal/quinzenal: verifica BRT (atual) E UTC (retrocompatibilidade com aprovações antigas)
+  // Aprovações feitas antes do fix de timezone foram gravadas com datas em UTC
+  // Para não mostrar missões indevidamente desbloqueadas, verificamos ambos os valores
+  if (freq === "weekly") {
+    const wBRT = weekStr();
+    // Fallback UTC para aprovações antigas gravadas antes do fix de timezone.
+    // Usa uma cópia de new Date() para não mutar o objeto original,
+    // e extrai componentes UTC explicitamente (sem toISOString que depende do objeto mutado).
+    const wUTC = (() => {
+      const now = new Date();
+      const day = now.getUTCDay();
+      const mondayOffset = day === 0 ? -6 : 1 - day;
+      const mon = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + mondayOffset));
+      return `${mon.getUTCFullYear()}-${String(mon.getUTCMonth()+1).padStart(2,"0")}-${String(mon.getUTCDate()).padStart(2,"0")}`;
+    })();
+    return approved.some(s => s.approvedWeek === wBRT || s.approvedWeek === wUTC);
+  }
+  if (freq === "monthly") {
+    const mBRT = monthStr();
+    const mUTC = new Date().toISOString().slice(0,7);
+    return approved.some(s => s.approvedMonth === mBRT || s.approvedMonth === mUTC);
+  }
+  if (freq === "biweekly") {
+    const bBRT = biweeklyStr();
+    // Fallback UTC para aprovações antigas gravadas antes do fix de timezone.
+    // Math.floor(dia/15): dia 1-14 → 0, dia 15-29 → 1, dia 30-31 → 2.
+    // Esse schema era o usado antes; mantemos para retrocompatibilidade sem alterar a semântica.
+    const dUTC = new Date();
+    const bUTC = `${dUTC.getUTCFullYear()}-${String(dUTC.getUTCMonth()+1).padStart(2,"0")}-${Math.floor(dUTC.getUTCDate()/15)}`;
+    return approved.some(s => s.approvedBiweekly === bBRT || s.approvedBiweekly === bUTC);
+  }
+  return false;
+}
+
+async function registerUser(name, fullName, email, password) {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/functions/v1/register-user`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${SUPABASE_KEY}`
+        },
+        body: JSON.stringify({ name, fullName, email, password })
+      }
+    );
+    const data = await res.json();
+    if (data.error) return { error: data.error };
+    store.users = [...store.users, data];
+    notify();
+    return { user: data };
+  } catch (e) {
+    return { error: "Erro de conexão. Tente novamente." };
+  }
+}
+async function loginUser(email, password) {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/functions/v1/login-user`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${SUPABASE_KEY}`
+        },
+        body: JSON.stringify({ email, password })
+      }
+    );
+    const data = await res.json();
+    if (data.error) return { error: data.error };
+    // Grava sessão no window para validação defensiva de identidade
+    if (data && data.id) window.__mlup_session = data.id;
+    return { user: data };
+  } catch (e) {
+    return { error: "Erro de conexão. Tente novamente." };
+  }
+}
+async function submitMission(userId, missionId, imageBase64) {
+  if (isMissionLocked(userId, missionId)) return { error:"Você já cumpriu essa missão no período permitido." };
+  const missionFreq = store.missions.find(m => m.id === missionId)?.frequency || "once";
+  const pending = store.submissions.find(s => s.userId===userId && s.missionId===missionId && s.status==="pending");
+  if (pending) {
+    // createdAt está em ISO UTC — converte para data BRT usando o helper isoUtcToBRTDateStr
+    const pendingDateBRT = pending.createdAt ? isoUtcToBRTDateStr(pending.createdAt) : "";
+    const bloqueiaHoje = missionFreq === "daily" ? pendingDateBRT === todayStr() : true;
+    if (bloqueiaHoje) return { error:"Você já tem um envio aguardando validação para essa missão." };
+  }
+  const imageUrl = await uploadToCloudinary(imageBase64);
+  if (!imageUrl) return { error:"Erro ao enviar a foto. Verifique sua conexão e tente novamente." };
+  // Apenas a URL do Cloudinary é gravada — nunca o base64
+  // nowBRT() garante fuso Bahia (UTC-3) — evita virada de dia às 21h em UTC
+  const brt = nowBRT(); const pad = n => String(n).padStart(2,"0");
+  const createdAtBRT = `${brt.getFullYear()}-${pad(brt.getMonth()+1)}-${pad(brt.getDate())}T${pad(brt.getHours())}:${pad(brt.getMinutes())}:${pad(brt.getSeconds())}.000-03:00`;
+  const sub = { userId, missionId, imageUrl, status:"pending", createdAt: createdAtBRT };
+  const res = await fbPush("submissions", sub);
+  const newSub = { ...sub, id: res.name };
+  store.submissions = [...store.submissions, newSub]; notify(); return { submission: newSub };
+}
+
+// ─── GameOps: Conclusão direta de missão (sem foto) ─────────────────────────
+// Aprova a missão instantaneamente, sem necessidade de comprovante fotográfico.
+// Use: concluirMissao(userId, missionId)
+// Exemplo no card: onClick={() => concluirMissao(user.id, mission.id)}
+async function concluirMissao(userId, missionId) {
+  // ── Defesa: nunca processa sem userId válido (previne manipulação via console) ──
+  if (!userId || typeof userId !== "string" || userId.length < 3)
+    return { error: "Sessão inválida. Faça login novamente." };
+  // ── Defesa: garante que o userId é o próprio usuário logado ──
+  const _currentSession = window.__mlup_session;
+  if (_currentSession && _currentSession !== userId)
+    return { error: "Operação não permitida." };
+  if (isMissionLocked(userId, missionId))
+    return { error: "Você já cumpriu essa missão no período permitido." };
+
+  const mission = store.missions.find(m => m.id === missionId);
+  if (!mission) return { error: "Missão não encontrada." };
+
+  const pending = store.submissions.find(
+    s => s.userId === userId && s.missionId === missionId && s.status === "pending"
+  );
+  if (pending) {
+    const pendingDateBRT = pending.createdAt ? isoUtcToBRTDateStr(pending.createdAt) : "";
+    const bloqueiaHoje = mission.frequency === "daily" ? pendingDateBRT === todayStr() : true;
+    if (bloqueiaHoje) return { error: "Você já tem um envio aguardando validação para essa missão." };
+  }
+
+  const pts = mission.points || 0;
+  const today = todayStr();
+  const week  = weekStr();
+  const brt   = nowBRT();
+  const pad   = n => String(n).padStart(2, "0");
+  const createdAtBRT = `${brt.getFullYear()}-${pad(brt.getMonth()+1)}-${pad(brt.getDate())}T${pad(brt.getHours())}:${pad(brt.getMinutes())}:${pad(brt.getSeconds())}.000-03:00`;
+
+  // 1. Grava submission já aprovada (sem foto)
+  const sub = {
+    userId, missionId,
+    imageUrl: null,
+    status: "approved",
+    createdAt: createdAtBRT,
+    approvedDate: today,
+    approvedWeek: week,
+    approvedMonth: monthStr(),
+    approvedBiweekly: biweeklyStr()
+  };
+  const res = await fbPush("submissions", sub);
+  const newSub = { ...sub, id: res.name };
+  store.submissions = [...store.submissions, newSub];
+
+  // 2. Atualiza pontos e dados do usuário
+  const u = store.users.find(u => u.id === userId);
+  if (u) {
+    const dailyPoints = { ...(u.dailyPoints || {}), [today]: ((u.dailyPoints || {})[today] || 0) + pts };
+    const completed = (mission.frequency === "once" && !(u.completedMissions || []).includes(missionId))
+      ? [...(u.completedMissions || []), missionId]
+      : (u.completedMissions || []);
+    const newTotalPoints = u.points + pts;
+    const levelBefore = getLevelInfo(u.points).name;
+    const levelAfter  = getLevelInfo(newTotalPoints).name;
+    const promoted    = levelBefore !== levelAfter;
+    const patchData   = { completedMissions: completed, dailyPoints, lastActiveDay: today };
+    if (promoted) patchData.lastPromotionDay = today;
+
+    const _sbConcluir = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    await _sbConcluir.rpc('increment_points', { player_id: u.id, row_points: pts });
+    await fbPatch(`users/${u.id}`, patchData);
+
+    const updatedUser = { ...u, ...patchData, points: newTotalPoints };
+    store.users = store.users.map(uu => uu.id === u.id ? updatedUser : uu);
+    await registrarHistorico(u.id, "conclusao_direta", pts, `[DIRETA] ${mission.title}`, u.points);
+
+    if (mission.requiredLevel === "ANCIÃO" && u.regenteRevoked && !u.regenteReconquistado) {
+      await registrarMissaoReconquista(u.id, mission.id);
+    }
+  }
+
+  notify();
+  return { submission: newSub };
+}
+
+// ─── Sistema de Histórico de Pontos ────────────────────────
+async function registrarHistorico(userId, tipo, pontos, descricao, pontosAntes) {
+  // Usa hora BRT (UTC-3) para alinhar com a lógica de data do restante do app.
+  // Sem isso, registros feitos entre 21h-24h BRT ficam com data UTC do dia seguinte
+  // e a função pontosNoDiaDoExtrato os exclui ao filtrar por h.data.slice(0,10).
+  const brt = nowBRT();
+  const pad = n => String(n).padStart(2, "0");
+  const dataBRT = `${brt.getFullYear()}-${pad(brt.getMonth()+1)}-${pad(brt.getDate())}T${pad(brt.getHours())}:${pad(brt.getMinutes())}:${pad(brt.getSeconds())}.000-03:00`;
+
+  const registro = {
+    userId,
+    tipo,
+    pontos,
+    descricao,
+    pontosAntes,
+    pontosDepois: pontosAntes + pontos,
+    data: dataBRT
+  };
+  await fbPush('historico_pontos', registro);
+}
+
+async function buscarHistorico(userId) {
+  const raw = await fbGet(`historico_pontos/${userId}`);
+  if (!raw) return [];
+  return Object.entries(raw)
+    .map(([id, v]) => ({ ...v, id }))
+    .sort((a, b) => new Date(b.data) - new Date(a.data));
+}
+
+async function reviewSubmission(submissionId, status) {
+  const today = todayStr(); const week = weekStr();
+  const sub = store.submissions.find(s => s.id===submissionId); if (!sub) return;
+  const updates = { status };
+  if (status==="approved") {
+    updates.approvedDate = today; updates.approvedWeek = week; updates.approvedMonth = monthStr(); updates.approvedBiweekly = biweeklyStr();
+    const mission = store.missions.find(m => m.id===sub.missionId);
+    const pts = mission?.points || 0;
+    const u = store.users.find(u => u.id===sub.userId);
+    if (u) {
+      const dailyPoints = { ...(u.dailyPoints||{}), [today]: ((u.dailyPoints||{})[today]||0)+pts };
+      const completed = (mission?.frequency==="once" && !(u.completedMissions||[]).includes(sub.missionId)) ? [...(u.completedMissions||[]), sub.missionId] : (u.completedMissions||[]);
+      const newTotalPoints = u.points + pts;
+      // Detecta promoção: se os pontos cruzaram o mínimo de um nível acima
+      const levelBefore = getLevelInfo(u.points).name;
+      const levelAfter  = getLevelInfo(newTotalPoints).name;
+      const promoted = levelBefore !== levelAfter;
+      const patchData = { completedMissions: completed, dailyPoints, lastActiveDay: today };
+      if (promoted) patchData.lastPromotionDay = today;
+      const updatedUser = { ...u, ...patchData, points: newTotalPoints };
+      // Incrementa pontos via RPC atômica (evita race condition)
+      const _sbAprov = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      await _sbAprov.rpc('increment_points', { player_id: u.id, row_points: pts });
+      await fbPatch(`users/${u.id}`, patchData);
+      store.users = store.users.map(uu => uu.id===u.id ? updatedUser : uu);
+      await registrarHistorico(u.id, "aprovacao", pts, mission?.title || "Missão", u.points);
+      // Se missão é de nível Ancião e usuário está em reconquista do Regente, registra progresso
+      if (mission?.requiredLevel === "ANCIÃO" && u.regenteRevoked && !u.regenteReconquistado) {
+        await registrarMissaoReconquista(u.id, mission.id);
+      }
+    }
+  }
+  await fbPatch(`submissions/${submissionId}`, updates);
+  store.submissions = store.submissions.map(s => s.id===submissionId ? { ...s, ...updates } : s);
+  notify();
+}
+async function revokeSubmission(submissionId) {
+  const sub = store.submissions.find(s => s.id === submissionId);
+  if (!sub) return;
+  const m = store.missions.find(m => m.id === sub.missionId);
+  const u = store.users.find(u => u.id === sub.userId);
+  if (u && m) {
+    const pts = Math.abs(m.points);
+    const newPoints = Math.max(0, u.points - pts);
+
+    // 1. Desconta pontos via RPC atômica
+    const _sbRev = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    await _sbRev.rpc('increment_points', { player_id: u.id, row_points: -pts });
+
+    // 2. Remove missionId de completedMissions para missões únicas (C3)
+    const newCompleted = m.frequency === "once"
+      ? (u.completedMissions || []).filter(id => id !== sub.missionId)
+      : (u.completedMissions || []);
+
+    // 3. Desconta dailyPoints do dia em que foi aprovada (meta diária)
+    const approvedDay = sub.approvedDate || todayStr();
+    const dailyPoints = { ...(u.dailyPoints || {}) };
+    if (dailyPoints[approvedDay] !== undefined) {
+      dailyPoints[approvedDay] = Math.max(0, (dailyPoints[approvedDay] || 0) - pts);
+    }
+
+    await fbPatch(`users/${u.id}`, { completedMissions: newCompleted, dailyPoints });
+    store.users = store.users.map(uu => uu.id === u.id
+      ? { ...uu, points: newPoints, completedMissions: newCompleted, dailyPoints }
+      : uu
+    );
+
+    // 4. Registra no extrato
+    await registrarHistorico(u.id, "estorno", -pts, `Estorno: ${m.title}`, u.points);
+  }
+
+  // 5. Zera TODOS os campos de aprovação na submission
+  // sbUpdate agora tem Prefer:return=minimal — os nulls chegam ao banco
+  const revoke = {
+    status: "rejected",
+    approvedDate: null,
+    approvedWeek: null,
+    approvedMonth: null,
+    approvedBiweekly: null
+  };
+  await fbPatch(`submissions/${submissionId}`, revoke);
+  store.submissions = store.submissions.map(s => s.id === submissionId ? { ...s, ...revoke } : s);
+  notify();
+}
+
+// B3: busca pontos de aprovações do dia no extrato — fonte imutável e confiável
+async function pontosNoDiaDoExtrato(userId, dateStr) {
+  const raw = await fbGet(`historico_pontos/${userId}`);
+  if (!raw) return 0;
+  return Object.values(raw)
+    .filter(h => h.tipo === "aprovacao" && h.data && h.data.slice(0,10) === dateStr)
+    .reduce((sum, h) => sum + (h.pontos || 0), 0);
+}
+
+
+
+// ── Verificação de divergência extrato vs ranking ────────────────────────────
+// Lê o extrato do usuário e compara com os pontos atuais.
+// NÃO altera nada — apenas grava um alerta no banco para o admin consultar.
+// Só verifica uma vez por dia para não sobrecarregar o banco.
+async function verificarDivergenciaPontos(userId) {
+  const u = store.users.find(u => u.id === userId);
+  if (!u || u.role === "admin") return;
+  const today = todayStr();
+  // Já verificou hoje — não repetir
+  if (u.lastDivergenciaCheck === today) return;
+  const raw = await fbGet(`historico_pontos/${userId}`);
+  // Sem extrato — marca como verificado e sai (usuário anterior ao deploy)
+  await fbPatch(`users/${userId}`, { lastDivergenciaCheck: today });
+  store.users = store.users.map(uu => uu.id === userId ? { ...uu, lastDivergenciaCheck: today } : uu);
+  if (!raw) return;
+  const registros = Object.values(raw);
+  // Soma apenas movimentações após o último rebaixamento registrado
+  // para evitar divergência por dados anteriores ao extrato
+  const TIPOS = ["aprovacao","conclusao_direta","bonus_login","bonus_streak","estorno","rebaixamento"];
+  const somaExtrato = registros
+    .filter(h => TIPOS.includes(h.tipo))
+    .reduce((s, h) => s + (h.pontos || 0), 0);
+  const pontosExtrato = Math.max(0, somaExtrato);
+  // Considera divergência se diferença > 50 pts (margem para bônus não registrados)
+  const diff = u.points - pontosExtrato;
+  const temDivergencia = Math.abs(diff) > 50;
+  if (!temDivergencia) return;
+  // Grava alerta no banco para o admin — sem alterar pontos
+  const alerta = {
+    userId,
+    nome: u.name || "—",
+    pontosRanking: u.points,
+    pontosExtrato,
+    diferenca: diff,
+    data: new Date().toISOString(),
+    resolvido: false,
+  };
+  await fbPatch(`alertas_divergencia/${userId}`, alerta);
+}
+
+// Retorna true se o usuário tem missão pendente de aprovação do dia informado
+// Converte um timestamp ISO UTC para string de data em BRT (UTC-3) via aritmética pura,
+// sem depender de toLocaleString (frágil em alguns ambientes) ou de recriar um Date
+// a partir do resultado formatado (perde precisão e re-interpreta como local).
+function isoUtcToBRTDateStr(isoUtc) {
+  const d = new Date(isoUtc);
+  const brtOffset = -3 * 60; // Bahia é UTC-3, sem DST
+  const localMs   = d.getTime() + (brtOffset - (-d.getTimezoneOffset())) * 60000;
+  const brt       = new Date(localMs);
+  return `${brt.getFullYear()}-${String(brt.getMonth()+1).padStart(2,"0")}-${String(brt.getDate()).padStart(2,"0")}`;
+}
+
+function temPendenteDoDia(userId, dateStr) {
+  return store.submissions.some(s =>
+    s.userId === userId &&
+    (s.status === "pending" || s.status === "pending_resubmit") &&
+    s.createdAt &&
+    isoUtcToBRTDateStr(s.createdAt) === dateStr
+  );
+}
+
+async function executarCheckDemotion(userId) {
+  // ── MODO ACAMPAMENTO: suspende todas as penalidades durante o evento ──────
+  if (isAcampamentoAtivo()) {
+    const _today = todayStr();
+    const _u0 = store.users.find(u => u.id===userId);
+    if (_u0 && _u0.lastActiveDay !== _today) {
+      await fbPatch(`users/${userId}`, { lastActiveDay: _today, missedDays: 0 });
+      store.users = store.users.map(uu => uu.id===userId ? { ...uu, lastActiveDay: _today, missedDays: 0 } : uu);
+      notify();
+    }
+    return { demoted: false, reason: 'acampamento_freeze' };
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+  const u = store.users.find(u => u.id===userId); if (!u || u.role==="admin") return;
+  const lvl = getLevelInfo(u.points);
+  const goal = LEVEL_DAILY_GOAL[lvl.name] || 0;
+  if (goal===0) return;
+  const today = todayStr();
+  if (u.lastActiveDay===today) return;
+  if (u.lastDemotionDay===today || u.lastPromotionDay===today) {
+    await fbPatch(`users/${userId}`, { missedDays:0, lastActiveDay: today });
+    store.users = store.users.map(uu => uu.id===userId ? { ...uu, missedDays:0, lastActiveDay: today } : uu);
+    notify(); return { demoted:false };
+  }
+  const last = u.lastActiveDay ? new Date(u.lastActiveDay) : null;
+  const now = new Date(today);
+  const rawDiff = last ? Math.floor((now-last)/86400000) : 0;
+  const diffDays = Math.min(rawDiff, 2);
+  const missedStreak = (u.missedDays||0) + (diffDays>0 ? diffDays : 0);
+  if (missedStreak >= 2) {
+    const levels = ["RECÉM-CONVERTIDO","APRENDIZ","SOLDADO","SENTINELA","ATALAIA","ANCIÃO","TRANSCENDENTE"];
+    const idx = levels.indexOf(lvl.name);
+    if (idx <= 0) {
+      await fbPatch(`users/${userId}`, { missedDays:0, lastActiveDay: today });
+      store.users = store.users.map(uu => uu.id===userId ? { ...uu, missedDays:0, lastActiveDay: today } : uu);
+      notify(); return { demoted:false };
+    }
+    const yesterday = new Date(now); yesterday.setDate(now.getDate()-1);
+    const yStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth()+1).padStart(2,"0")}-${String(yesterday.getDate()).padStart(2,"0")}`;
+
+    // REGRA 2: missão pendente de ontem — pula o dia, não conta falta
+    if (temPendenteDoDia(userId, yStr)) {
+      await fbPatch(`users/${userId}`, { lastActiveDay: today });
+      store.users = store.users.map(uu => uu.id===userId ? { ...uu, lastActiveDay: today } : uu);
+      notify(); return { demoted:false, reason:"pending_submission" };
+    }
+
+    const ptsyDaily = u.dailyPoints?.[yStr] || 0;
+    if (ptsyDaily >= goal) {
+      await fbPatch(`users/${userId}`, { missedDays:0, lastActiveDay: today });
+      store.users = store.users.map(uu => uu.id===userId ? { ...uu, missedDays:0, lastActiveDay: today } : uu);
+      notify(); return { demoted:false };
+    }
+    const ptsyExtrato = await pontosNoDiaDoExtrato(userId, yStr);
+    if (ptsyExtrato >= goal) {
+      const dailyPoints = { ...(u.dailyPoints||{}), [yStr]: ptsyExtrato };
+      await fbPatch(`users/${userId}`, { missedDays:0, lastActiveDay: today, dailyPoints });
+      store.users = store.users.map(uu => uu.id===userId ? { ...uu, missedDays:0, lastActiveDay: today, dailyPoints } : uu);
+      notify(); return { demoted:false };
+    }
+    const prevLevel = levels[idx-1];
+    const newPoints = DEMOTION_TARGET[lvl.name] !== undefined ? DEMOTION_TARGET[lvl.name] : (LEVEL_MIN_POINTS[prevLevel] || 0);
+    const _sbDemote = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    await _sbDemote.rpc('increment_points', { player_id: userId, row_points: newPoints - u.points });
+    await fbPatch(`users/${userId}`, { missedDays:0, lastActiveDay: today, lastDemotionDay: today });
+    store.users = store.users.map(uu => uu.id===userId ? { ...uu, points: newPoints, missedDays:0, lastActiveDay: today, lastDemotionDay: today } : uu);
+    await registrarHistorico(userId, "rebaixamento", newPoints - u.points, `Rebaixamento: ${lvl.name} → ${prevLevel}`, u.points);
+    // Revoga o Regente do Equilíbrio se o usuário o tinha
+    await revogarRegenteSeNecessario(userId);
+    notify(); return { demoted:true, prevLevel, newPoints };
+  }
+  const yesterday2 = new Date(now); yesterday2.setDate(now.getDate()-1);
+  const yStr2 = `${yesterday2.getFullYear()}-${String(yesterday2.getMonth()+1).padStart(2,"0")}-${String(yesterday2.getDate()).padStart(2,"0")}`;
+  const ptsy = u.dailyPoints?.[yStr2] || 0;
+  const todayPts = u.dailyPoints?.[today] || 0;
+  let newMissed;
+  if (diffDays === 0) {
+    newMissed = todayPts >= goal ? 0 : (u.missedDays||0);
+  } else {
+    // REGRA 2 no caminho de missedDays: também pula se tiver pendente de ontem
+    if (temPendenteDoDia(userId, yStr2)) {
+      await fbPatch(`users/${userId}`, { lastActiveDay: today });
+      store.users = store.users.map(uu => uu.id===userId ? { ...uu, lastActiveDay: today } : uu);
+      notify(); return { demoted:false, reason:"pending_submission" };
+    }
+    newMissed = ptsy >= goal ? 0 : (u.missedDays||0) + 1;
+  }
+  await fbPatch(`users/${userId}`, { missedDays: newMissed, lastActiveDay: today });
+  store.users = store.users.map(uu => uu.id===userId ? { ...uu, missedDays: newMissed, lastActiveDay: today } : uu);
+  notify(); return { demoted:false };
+}
+
+async function checkDemotion(userId) {
+  const brt = nowBRT();
+  const hora  = brt.getHours();
+  const minuto = brt.getMinutes();
+
+  // REGRA 1: ninguém rebaixado antes das 23h59 BRT
+  // Se for antes disso, agenda para rodar às 23h59 e retorna sem avaliar agora
+  if (hora < 23 || (hora === 23 && minuto < 59)) {
+    const msAte2359 = ((23 - hora) * 60 * 60 + (59 - minuto) * 60 + (60 - brt.getSeconds())) * 1000;
+    setTimeout(() => executarCheckDemotion(userId), msAte2359);
+    return { demoted:false, reason:"scheduled_23h59" };
+  }
+
+  // Já são 23h59 ou mais — avalia agora
+  return executarCheckDemotion(userId);
+}
+async function createMission(title, desc, tip, category, difficulty, points, frequency, requiredLevel, allowedDays) {
+  const id = crypto.randomUUID();
+  // Normaliza antes de gravar — evita que variantes sem acento entrem no banco
+  const mission = { id, title, desc, tip, category, difficulty: normalizeDifficulty(difficulty), points: Number(points), frequency: frequency||"once", requiredLevel: requiredLevel||"", allowedDays: allowedDays||[] };
+  await fbSet(`missions/${id}`, mission);
+  store.missions = [...store.missions, mission]; notify(); return { mission };
+}
+async function updateMission(id, title, desc, tip, category, difficulty, points, frequency, requiredLevel, allowedDays) {
+  // Normaliza antes de gravar — evita que variantes sem acento entrem no banco
+  const updated = { id, title, desc, tip, category, difficulty: normalizeDifficulty(difficulty), points: Number(points), frequency: frequency||"once", requiredLevel: requiredLevel||"", allowedDays: allowedDays||[] };
+  await fbPatch(`missions/${id}`, updated);
+  store.missions = store.missions.map(m => m.id===id ? { ...m, ...updated } : m); notify();
+}
+async function deleteMission(id) {
+  await fbDelete(`missions/${id}`);
+  store.missions = store.missions.filter(m => m.id!==id); notify();
+}
+
+// ── Componente de seleção de frequência ──
+function FreqSelector({ value, onChange }) {
+  return (
+    <div style={{display:"flex", gap:8, marginTop:4}}>
+      {FREQUENCIES.map(f => (
+        <button key={f.value} className="freq-btn"
+          style={{
+            borderColor: f.color,
+            color:       value === f.value ? "#000" : f.color,
+            background:  value === f.value ? f.color : "transparent",
+            fontWeight:  value === f.value ? "700" : "400",
+          }}
+          onClick={() => onChange(f.value)}>
+          {f.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Componente de seleção de dias da semana ──
+function DaysSelector({ value, onChange }) {
+  const toggle = (d) => {
+    const cur = value || [];
+    onChange(cur.includes(d) ? cur.filter(x => x !== d) : [...cur, d]);
+  };
+  return (
+    <div style={{display:"flex", gap:6, marginTop:4, flexWrap:"wrap"}}>
+      {WEEK_DAYS.map(d => {
+        const active = (value||[]).includes(d.value);
+        return (
+          <button key={d.value}
+            style={{
+              fontFamily:"'Orbitron',monospace", fontSize:9, letterSpacing:1,
+              padding:"7px 10px", border:"1px solid", cursor:"pointer", transition:"all .2s",
+              textTransform:"uppercase", borderColor: active ? "#00e5ff" : "rgba(0,229,255,.3)",
+              color: active ? "#000" : "#00e5ff", background: active ? "#00e5ff" : "transparent",
+              fontWeight: active ? "700" : "400",
+            }}
+            onClick={() => toggle(d.value)}>
+            {d.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function Logo({ size }) {
+  const big = size === "lg";
+  if (big) {
+    return (
+      <div style={{textAlign:"center", position:"relative"}}>
+        <div style={{
+          position:"absolute", top:"50%", left:"50%",
+          transform:"translate(-50%,-50%)",
+          width:520, height:520, borderRadius:"50%",
+          background:"radial-gradient(circle, rgba(155,48,255,0.18) 0%, rgba(0,229,255,0.10) 50%, transparent 75%)",
+          filter:"blur(24px)",
+          pointerEvents:"none"
+        }} />
+        <img
+          src="https://res.cloudinary.com/dbocy2dpp/image/upload/v1773961500/WhatsApp_Image_2026-03-08_at_20.32.14-removebg-preview_uiyj32.png"
+          alt="Missão Level-Up — Acampa Seed 2026"
+          style={{
+            width:"100%",
+            maxWidth:600,
+            height:"auto",
+            display:"block",
+            margin:"0 auto",
+            position:"relative",
+            filter:"drop-shadow(0 0 20px rgba(0,229,255,0.6)) drop-shadow(0 0 40px rgba(155,48,255,0.5)) drop-shadow(0 0 60px rgba(255,215,0,0.25))",
+            animation:"flicker 8s infinite"
+          }}
+        />
+      </div>
+    );
+  }
+  return (
+    <div style={{textAlign:"center", animation:"flicker 8s infinite"}}>
+      <div style={{fontFamily:"'Orbitron',monospace", fontSize:9, letterSpacing:4, color:"#ff4dbb", marginBottom:4}}>ACAMPA SEED 2026</div>
+      <div style={{fontFamily:"'Orbitron',monospace", fontWeight:900, fontSize:22, lineHeight:1, background:"linear-gradient(135deg,#00e5ff,#00bcd4)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent"}}>MISSÃO</div>
+      <div style={{fontFamily:"'Orbitron',monospace", fontWeight:900, fontSize:28, lineHeight:1, background:"linear-gradient(135deg,#ffd700,#ffaa00)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent"}}>LEVEL-UP</div>
+    </div>
+  );
+}
+
+function LevelBar({ user }) {
+  const lvl  = getEffectiveLevelInfo(user.id) || getLevelInfo(user.points);
+  const raw  = getLevelInfo(user.points);
+  const isT  = lvl.name === "TRANSCENDENTE";
+  const thresholds = [0,300,700,1200,2000,3000,10000];
+  const next = thresholds.find(l => l > user.points) || 10000;
+  const prev = [...thresholds].reverse().find(l => l <= user.points) || 0;
+  const pct  = next === prev ? 100 : Math.min(100, ((user.points - prev) / (next - prev)) * 100);
+  // Se tem 10k mas falta o arquétipo — mostra aviso de requisito pendente
+  const pendingArchetype = raw.name === "TRANSCENDENTE" && !isT;
+  return (
+    <div className="panel panel-cyan" style={{padding:"16px 20px", borderRadius:4,
+      borderColor: isT ? "#ffd70066" : undefined,
+      boxShadow:   isT ? "0 0 28px rgba(255,215,0,.2), inset 0 0 20px rgba(255,215,0,.04)" : undefined}}>
+      <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8}}>
+        <div>
+          <span style={{fontFamily:"Orbitron", fontSize:10, color:"#6a6a9a"}}>NÍVEL ATUAL</span>
+          <div style={{fontFamily:"Orbitron", fontWeight:900, fontSize:18, color: lvl.color || "#00ccff"}}>
+            {isT && <span style={{marginRight:6}}>✦</span>}{lvl.name}
+          </div>
+          {isT && <div style={{marginTop:6}}><RegenteBadge userId={user.id} /></div>}
+          {pendingArchetype && (
+            <div style={{fontFamily:"Orbitron", fontSize:8, color:"#ff990099", letterSpacing:1, marginTop:3}}>
+              ⚠ 10k pts atingidos — falta o arquétipo Regente
+            </div>
+          )}
+        </div>
+        <div style={{textAlign:"right"}}>
+          <span style={{fontFamily:"Orbitron", fontSize:10, color:"#6a6a9a"}}>PONTOS</span>
+          <div style={{fontFamily:"Orbitron", fontWeight:900, fontSize:24, color:"#ffdd00"}}>{user.points}</div>
+        </div>
+      </div>
+      <div className="progress-bar">
+        <div className="progress-fill" style={{width:`${pct}%`,
+          background: isT
+            ? "linear-gradient(90deg,#ffd700,#ff9900,#ffd700)"
+            : "linear-gradient(90deg,#9b30ff,#00e5ff,#ffd700)"}} />
+      </div>
+      <div style={{fontSize:11, color:"#6a6a9a", marginTop:4, textAlign:"right"}}>
+        {user.points} / {next >= 10000 ? "10.000" : next} pts
+        {pendingArchetype && <span style={{color:"#ff9900", marginLeft:8}}>— conquiste o arquétipo Regente</span>}
+      </div>
+    </div>
+  );
+}
+
+function AuthScreen({ onLogin }) {
+  const [tab, setTab] = useState("login");
+  const [form, setForm] = useState({ name:"", fullName:"", email:"", password:"" });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const set = k => e => setForm(f => ({...f, [k]: e.target.value}));
+
+  const handleSubmit = async () => {
+    setError(""); setLoading(true);
+    if (tab === "login") {
+      const res = await loginUser(form.email, form.password);
+      setLoading(false);
+      if (res.error) setError(res.error); else onLogin(res.user);
+    } else {
+      if (!form.name.trim()) { setLoading(false); return setError("Informe seu nome bíblico."); }
+      if (!form.fullName.trim()) { setLoading(false); return setError("Informe seu nome completo."); }
+      if (!form.email.includes("@")) { setLoading(false); return setError("E-mail inválido."); }
+      if (form.password.length < 6) { setLoading(false); return setError("Senha minima: 6 caracteres."); }
+      const res = await registerUser(form.name, form.fullName, form.email, form.password);
+      setLoading(false);
+      if (res.error) setError(res.error); else onLogin(res.user);
+    }
+  };
+
+  return (
+    <div style={{minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", padding:"20px 20px 40px"}}>
+      <div style={{width:"100%", maxWidth:460}}>
+        <div style={{marginBottom:0}}><Logo size="lg" /></div>
+        <p style={{textAlign:"center", color:"#9090bb", marginBottom:28, marginTop:8, fontSize:14, lineHeight:1.8, fontStyle:"italic"}}>
+          "Prossigo para o alvo, para o prêmio da soberana vocação de Deus em Cristo Jesus."
+          <br/><span style={{fontSize:11, opacity:.7, fontStyle:"normal", fontFamily:"Orbitron", letterSpacing:1, color:"#ff4dbb"}}>Filipenses 3:14</span>
+        </p>
+        <div className="panel panel-cyan" style={{padding:32, borderRadius:4}}>
+          <div style={{display:"flex", marginBottom:28, borderBottom:"1px solid rgba(0,229,255,.2)"}}>
+            {["login","register"].map(t => (
+              <button key={t} className={`nav-btn ${tab===t?"active":""}`} onClick={() => {setTab(t); setError("");}}>
+                {t==="login" ? "▶ Entrar" : "+ Cadastrar"}
+              </button>
+            ))}
+          </div>
+          <div style={{display:"flex", flexDirection:"column", gap:16}}>
+            {tab==="register" && (
+              <>
+                <div><label className="label">Nome Bíblico</label>
+                <input className="input" placeholder="Ex: Davi, Ester, Joao..." value={form.name} onChange={set("name")} /></div>
+                <div><label className="label">Nome Completo</label>
+                <input className="input" placeholder="Seu nome completo" value={form.fullName} onChange={set("fullName")} /></div>
+              </>
+            )}
+            <div><label className="label">Email</label>
+            <input className="input" type="email" placeholder="seu@email.com" value={form.email} onChange={set("email")} onKeyDown={e => e.key==="Enter" && handleSubmit()} /></div>
+            <div><label className="label">Senha {tab==="register" && "(mín. 6 caracteres)"}</label>
+            <input className="input" type="password" placeholder="••••••••" value={form.password} onChange={set("password")} onKeyDown={e => e.key==="Enter" && handleSubmit()} /></div>
+            {error && <div className="error-msg">{error}</div>}
+            <button className="btn btn-cyan" style={{width:"100%", marginTop:8}} onClick={handleSubmit} disabled={loading}>
+              {loading ? <span className="spinner"/> : tab==="login" ? "▶ INICIAR JORNADA" : "+ CRIAR CONTA"}
+            </button>
+          </div>
+        </div>
+        <p style={{textAlign:"center", marginTop:16, fontSize:12, color:"#6a6a9a"}}>
+          {tab==="login" ? "Novo por aqui? " : "Já tem conta? "}
+          <button onClick={() => {setTab(tab==="login"?"register":"login"); setError("");}}
+            style={{background:"none", border:"none", color:"#00ccff", cursor:"pointer", fontFamily:"Orbitron", fontSize:11}}>
+            {tab==="login" ? "CADASTRAR-SE" : "ENTRAR"}
+          </button>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function MissionCard({ mission, user, onSubmit, isAdmin, onDelete }) {
+  const [expanded,    setExpanded]    = useState(false);
+  const [editing,     setEditing]     = useState(false);
+  const [imageBase64, setImageBase64] = useState(null);
+  const [previewUrl,  setPreviewUrl]  = useState(null);
+  const [msg,         setMsg]         = useState("");
+  const [sending,     setSending]     = useState(false);
+  const [concluding,  setConcluding]  = useState(false);
+  const [concludeMsg, setConcludeMsg] = useState("");
+  const [hovered,     setHovered]     = useState(false);
+  const fileRef = useRef();
+  const countdown = useCountdown();
+
+  const [editForm, setEditForm] = useState({
+    title: mission.title, desc: mission.desc, tip: mission.tip || "",
+    category: mission.category, difficulty: normalizeDifficulty(mission.difficulty || ""),
+    points: String(mission.points), frequency: mission.frequency || "once",
+    requiredLevel: mission.requiredLevel || "", allowedDays: mission.allowedDays || []
+  });
+  const [editMsg, setEditMsg] = useState("");
+  const setE = k => e => setEditForm(f => ({...f, [k]: e.target.value}));
+
+  const submission = store.submissions.filter(s => s.userId === user.id && s.missionId === mission.id)
+    .sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt))[0];
+
+  const freq = mission.frequency || "once";
+  const freqData = FREQUENCIES.find(f => f.value === freq) || FREQUENCIES[0];
+  const isLocked   = isMissionLocked(user.id, mission.id);
+  const isLevelLocked = !isAdmin && isMissionLevelLocked(user.id, mission);
+  const isDayLocked   = !isAdmin && isMissionDayLocked(mission);
+  const isCompleted = freq === "once" && (user.completedMissions||[]).includes(mission.id);
+  const isPending   = submission?.status === "pending";
+  const isRejected  = !isLocked && submission?.status === "rejected";
+  const catColor    = CATEGORY_COLORS[mission.category] || "#00ccff";
+  const diffColor   = DIFFICULTY_COLORS[normalizeDifficulty(mission.difficulty)] || "#6a6a9a";
+  const hoverBorder = catColor;
+  const baseBorder  = isCompleted ? "#39ff1444" : isLocked ? "#9b30ff44" : isPending ? "#ffd70044" : "rgba(0,229,255,.25)";
+
+  const handleFile = e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      // Comprime via canvas antes de enviar — limita a 1200px e 82% quality
+      // Reduz fotos de celular de ~5MB para ~200-400KB sem perda visual perceptível
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1200;
+        let { width: w, height: h } = img;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+          else       { w = Math.round(w * MAX / h); h = MAX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const compressed = canvas.toDataURL('image/jpeg', 0.82);
+        setImageBase64(compressed);
+        setPreviewUrl(compressed);
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmit = async () => {
+    if (!imageBase64) return setMsg("Selecione uma foto como comprovante.");
+    setSending(true);
+    const res = await submitMission(user.id, mission.id, imageBase64);
+    setSending(false);
+    if (res.error) setMsg(res.error);
+    else { setMsg("Enviado! Aguarde aprovação do líder."); setExpanded(false); onSubmit(); }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editForm.title.trim()) return setEditMsg("Informe o título.");
+    if (!editForm.desc.trim())  return setEditMsg("Informe a descrição.");
+    if (!editForm.points || isNaN(editForm.points) || Number(editForm.points) <= 0) return setEditMsg("Pontuação inválida.");
+    await updateMission(mission.id, editForm.title.trim(), editForm.desc.trim(), editForm.tip.trim(),
+      editForm.category, editForm.difficulty, editForm.points, editForm.frequency,
+      editForm.requiredLevel, editForm.allowedDays);
+    setEditMsg("Missão atualizada!");
+    setTimeout(() => { setEditMsg(""); setEditing(false); }, 1200);
+  };
+
+  const statusBadge = () => {
+    if (isCompleted) return <span className="tag badge-approved">CONCLUÍDA +{mission.points}pts</span>;
+    if (isLocked && freq==="daily")   return <div style={{display:"flex",flexDirection:"column",gap:4}}><span className="tag" style={{background:"#9b30ff22",color:"#7700ff",borderColor:"#9b30ff44"}}>FEITA HOJE - VOLTA AMANHÃ</span><span style={{fontFamily:"Orbitron",fontSize:9,color:"#ff4dbb",letterSpacing:1}}>⏱ disponível em {countdown}</span></div>;
+    if (isLocked && freq==="monthly")   return <span className="tag" style={{background:"#00ffcc22",color:"#00ffcc",borderColor:"#00ffcc44"}}>FEITA ESTE MÊS - VOLTA NO MÊS SEGUINTE</span>;
+    if (isLocked && freq==="biweekly")  return <span className="tag" style={{background:"#ff990022",color:"#ff9900",borderColor:"#ff990044"}}>FEITA NESTE PERÍODO - VOLTA EM 15 DIAS</span>;
+    if (isLocked && freq==="weekly") return <span className="tag" style={{background:"#9b30ff22",color:"#7700ff",borderColor:"#9b30ff44"}}>FEITA ESSA SEMANA</span>;
+    if (isPending)   return <span className="tag badge-pending">AGUARDANDO VALIDAÇÃO</span>;
+    if (isRejected)  return <span className="tag badge-rejected">REPROVADA - TENTE NOVAMENTE</span>;
+    return null;
+  };
+
+  return (
+    <div className="mission-card panel"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        padding:36, borderRadius:4,
+        borderColor: hovered ? hoverBorder : baseBorder,
+        boxShadow:   hovered ? `0 8px 32px ${hoverBorder}44, 0 0 0 1px ${hoverBorder}66` : "none",
+        opacity: isCompleted ? .8 : 1,
+        background: hovered ? "linear-gradient(135deg,rgba(19,16,58,.98),rgba(19,16,58,.92))" : "rgba(19,16,58,.92)",
+      }}>
+
+      <div style={{display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8}}>
+        <div style={{display:"flex", gap:8, flexWrap:"wrap"}}>
+          <span className="tag" style={{borderColor:catColor, color:catColor}}>{mission.category}</span>
+          <span className="tag" style={{borderColor:DIFFICULTY_COLORS[normalizeDifficulty(mission.difficulty)], color:DIFFICULTY_COLORS[normalizeDifficulty(mission.difficulty)]}}>{normalizeDifficulty(mission.difficulty)}</span>
+          <span className="tag" style={{borderColor:freqData.color, color:freqData.color}}>{freqData.label}</span>
+          {isAdmin && mission.requiredLevel && (
+            <span className="tag" style={{borderColor:"#ff225588", color:"#ff2255", background:"#ff225511"}}>
+              🔒 {mission.requiredLevel}+
+            </span>
+          )}
+          {mission.allowedDays && mission.allowedDays.length > 0 && (
+            <span className="tag" style={{borderColor:"#00e5ff88", color:"#00e5ff", background:"#00e5ff11"}}>
+              📅 {getAllowedDaysLabel(mission.allowedDays)}
+            </span>
+          )}
+        </div>
+        <div style={{display:"flex", alignItems:"center", gap:8}}>
+          <span style={{fontFamily:"Orbitron", fontSize:24, fontWeight:900, color:"#ffdd00"}}>+{mission.points}</span>
+          {isAdmin && (
+            <>
+              <button onClick={() => { setEditing(!editing); setEditMsg(""); }}
+                style={{background: editing ? "rgba(0,229,255,.15)" : "none",
+                  border:"1px solid rgba(0,229,255,.4)", color:"#00ccff", cursor:"pointer",
+                  fontFamily:"Orbitron", fontSize:9, padding:"4px 8px", borderRadius:2, transition:"all .2s"}}
+                title="Editar missão">✎ EDITAR</button>
+              {onDelete && (
+                <button onClick={() => onDelete(mission.id)}
+                  style={{background:"none", border:"1px solid #ff225544", color:"#ff2255", cursor:"pointer",
+                    fontFamily:"Orbitron", fontSize:9, padding:"4px 8px", borderRadius:2, transition:"all .2s"}}
+                  title="Excluir missão">✕</button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {!editing && (
+        <>
+          <h3 style={{fontFamily:"Orbitron", fontSize:20, fontWeight:700, marginBottom:12, color:"#e0e0ff"}}>{mission.title}</h3>
+          <p style={{fontSize:18, color:"#6a6a9a", lineHeight:1.7, marginBottom:16}}>{mission.desc}</p>
+          {mission.tip && (
+            <div style={{margin:"0 0 16px 0", padding:"16px 20px",
+              background:"linear-gradient(135deg,rgba(255,215,0,.07),rgba(191,0,255,.07))",
+              border:"1px solid rgba(255,215,0,.3)", borderLeft:"3px solid #ffd700", borderRadius:"0 4px 4px 0"}}>
+              <div style={{fontFamily:"Orbitron", fontSize:11, letterSpacing:2, color:"#ffdd00", marginBottom:8}}>DICA</div>
+              <p style={{fontSize:16, color:"#e8d88a", lineHeight:1.8, fontStyle:"italic"}}>{mission.tip}</p>
+            </div>
+          )}
+          {statusBadge() && <div style={{marginBottom:12}}>{statusBadge()}</div>}
+          {!isAdmin && isLevelLocked && (
+            <div style={{marginBottom:12, padding:"10px 14px", background:"#ff225511", border:"1px solid #ff225544", borderLeft:"3px solid #ff2255", borderRadius:"0 4px 4px 0"}}>
+              <span style={{fontFamily:"Orbitron", fontSize:11, color:"#ff2255", letterSpacing:1}}>🔒 EXCLUSIVA NÍVEL {mission.requiredLevel}</span>
+            </div>
+          )}
+          {!isAdmin && isDayLocked && (
+            <div style={{marginBottom:12, padding:"10px 14px", background:"#00e5ff11", border:"1px solid #00e5ff44", borderLeft:"3px solid #00e5ff", borderRadius:"0 4px 4px 0"}}>
+              <span style={{fontFamily:"Orbitron", fontSize:11, color:"#00e5ff", letterSpacing:1}}>📅 DISPONÍVEL: {getAllowedDaysLabel(mission.allowedDays)}</span>
+            </div>
+          )}
+          {/* ── Botões de ação ─────────────────────────────────────────────────── */}
+          {!isAdmin && !isCompleted && !isPending && !isLocked && !isLevelLocked && !isDayLocked && (() => {
+            const direta = podeConcluidaDireta(mission);
+            return (
+              <div style={{display:"flex", gap:8, flexWrap:"wrap"}}>
+                {direta && (
+                  <button className="btn btn-green" style={{fontSize:10, padding:"8px 16px"}}
+                    disabled={concluding}
+                    onClick={async () => {
+                      if (concluding) return;
+                      setConcluding(true); setConcludeMsg("");
+                      const res = await concluirMissao(user.id, mission.id);
+                      setConcluding(false);
+                      if (res.error) { setConcludeMsg(res.error); }
+                      else { setConcludeMsg("✓ +" + mission.points + " XP registrados!"); onSubmit && onSubmit(); }
+                    }}>
+                    {concluding ? <span className="spinner"/> : `✔ CONCLUIR +${mission.points} XP`}
+                  </button>
+                )}
+                <button className="btn btn-ghost" style={{fontSize:10, padding:"8px 16px"}}
+                  onClick={() => { setExpanded(!expanded); setConcludeMsg(""); }}>
+                  {expanded ? "FECHAR"
+                    : isRejected ? "📷 REENVIAR FOTO"
+                    : direta    ? "📷 ENVIAR FOTO (OPCIONAL)"
+                    :             "📷 ENVIAR COMPROVANTE"}
+                </button>
+              </div>
+            );
+          })()}
+          {concludeMsg && !isCompleted && !isLocked && (
+            <div style={{marginTop:8, padding:"8px 14px",
+              background: concludeMsg.startsWith("✓") ? "rgba(0,255,68,.1)" : "rgba(255,23,68,.1)",
+              border: concludeMsg.startsWith("✓") ? "1px solid rgba(0,255,68,.35)" : "1px solid rgba(255,23,68,.35)",
+              borderRadius:3, color: concludeMsg.startsWith("✓") ? "#00ff44" : "#ff6090",
+              fontFamily:"Orbitron", fontSize:11, letterSpacing:1}}>
+              {concludeMsg}
+            </div>
+          )}
+          {!isAdmin && expanded && !isCompleted && !isPending && !isLocked && !isLevelLocked && !isDayLocked && (
+            <div style={{marginTop:16, paddingTop:16, borderTop:"1px solid rgba(0,229,255,.2)", display:"flex", flexDirection:"column", gap:12}}>
+              {podeConcluidaDireta(mission)
+                ? <p style={{fontSize:12, color:"#6a6a9a"}}>Enviar uma foto é opcional para missões fáceis e médias diárias, mas pode ser solicitada pelo líder como confirmação extra.</p>
+                : <p style={{fontSize:12, color:"#6a6a9a"}}>Tire uma foto como prova de que cumpriu a missão. Um líder irá verificar e aprovar.</p>
+              }
+              <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}} onChange={handleFile} />
+              <button className="btn btn-ghost" style={{fontSize:10}} onClick={() => fileRef.current.click()}>
+                📷 {imageBase64 ? "TROCAR FOTO" : "SELECIONAR FOTO"}
+              </button>
+              {previewUrl && <img src={previewUrl} alt="preview" style={{width:"100%", maxHeight:180, objectFit:"cover", border:"1px solid rgba(0,229,255,.2)", borderRadius:2}} />}
+              {msg && <div className={msg.startsWith("✓") ? "success-msg" : "error-msg"}>{msg}</div>}
+              <button className="btn btn-cyan" onClick={handleSubmit} disabled={sending || !imageBase64}>
+                {sending ? <span className="spinner"/> : "↑ ENVIAR PARA VALIDAÇÃO"}
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      {editing && isAdmin && (
+        <div style={{marginTop:8, display:"flex", flexDirection:"column", gap:14,
+          paddingTop:16, borderTop:"1px solid rgba(0,229,255,.2)", animation:"fadeIn .2s ease"}}>
+          <div style={{fontFamily:"Orbitron", fontSize:10, color:"#00ccff", letterSpacing:2}}>✎ EDITANDO MISSÃO</div>
+          <div>
+            <label className="label">Título</label>
+            <input className="input" value={editForm.title} onChange={setE("title")} />
+          </div>
+          <div>
+            <label className="label">Descrição</label>
+            <textarea className="input" value={editForm.desc} onChange={setE("desc")} rows={3}
+              style={{resize:"vertical", fontFamily:"'Rajdhani',sans-serif", lineHeight:1.5}} />
+          </div>
+          <div>
+            <label className="label" style={{color:"#ffdd00"}}>💡 Dica / Sugestão <span style={{color:"#6a6a9a", fontWeight:400}}>(opcional)</span></label>
+            <textarea className="input" value={editForm.tip} onChange={setE("tip")} rows={2}
+              placeholder="Dica para os participantes..."
+              style={{resize:"vertical", fontFamily:"'Rajdhani',sans-serif", lineHeight:1.5,
+                borderColor:"rgba(255,215,0,.3)", background:"linear-gradient(135deg,rgba(255,215,0,.05),rgba(191,0,255,.04))"}} />
+          </div>
+          <div className="grid-2">
+            <div>
+              <label className="label">Categoria</label>
+              <select className="select" value={editForm.category} onChange={setE("category")}>
+                {CATEGORIES.map(c => <option key={c} value={c} style={{background:"#0d0a2e"}}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="label">Pontuação</label>
+              <input className="input" type="number" min="1" value={editForm.points} onChange={setE("points")} />
+            </div>
+          </div>
+          <div>
+            <label className="label">Dificuldade</label>
+            <div style={{display:"flex", gap:6, flexWrap:"wrap", marginTop:4}}>
+              {DIFFICULTIES.map(d => (
+                <button key={d.label} className="diff-btn"
+                  style={{
+                    borderColor: d.color,
+                    color:       editForm.difficulty === d.label ? "#000" : d.color,
+                    background:  editForm.difficulty === d.label ? d.color : "transparent",
+                    fontWeight:  editForm.difficulty === d.label ? "700" : "400",
+                    fontSize:    d.label.length > 8 ? "8px" : "9px",
+                  }}
+                  onClick={() => setEditForm(f => ({...f, difficulty: d.label}))}>
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="label">Frequência</label>
+            <FreqSelector value={editForm.frequency} onChange={v => setEditForm(f => ({...f, frequency: v}))} />
+          </div>
+          <div>
+            <label className="label" style={{color:"#ff2255"}}>🔒 Nível mínimo exigido <span style={{color:"#6a6a9a", fontWeight:400}}>(opcional)</span></label>
+            <select className="select" value={editForm.requiredLevel} onChange={setE("requiredLevel")}>
+              <option value="" style={{background:"#0d0a2e"}}>Disponível para todos</option>
+              {LEVEL_NAMES.map(l => <option key={l} value={l} style={{background:"#0d0a2e"}}>{l}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label" style={{color:"#00e5ff"}}>📅 Dias permitidos <span style={{color:"#6a6a9a", fontWeight:400}}>(vazio = todos os dias)</span></label>
+            <DaysSelector value={editForm.allowedDays} onChange={v => setEditForm(f => ({...f, allowedDays: v}))} />
+          </div>
+          {editMsg && <div className={editMsg.startsWith("✓") ? "success-msg" : "error-msg"}>{editMsg}</div>}
+          <div style={{display:"flex", gap:8}}>
+            <button className="btn btn-cyan" style={{flex:1, fontSize:11}} onClick={handleSaveEdit}>✓ SALVAR</button>
+            <button className="btn btn-ghost" style={{flex:1, fontSize:11}} onClick={() => { setEditing(false); setEditMsg(""); }}>✕ CANCELAR</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CreateMissionForm({ onCreated }) {
+  const EMPTY = { title:"", desc:"", tip:"", category:"Espiritualidade", difficulty:"FÁCIL", points:"", frequency:"once", requiredLevel:"", allowedDays:[] };
+  const [form, setForm] = useState(EMPTY);
+  const [msg, setMsg]   = useState("");
+  const set = k => e => setForm(f => ({...f, [k]: e.target.value}));
+  const selDiff = DIFFICULTIES.find(d => d.label === form.difficulty);
+
+  const handleCreate = async () => {
+    if (!form.title.trim()) return setMsg("Informe o título da missão.");
+    if (!form.desc.trim())  return setMsg("Informe a descrição.");
+    if (!form.points || isNaN(form.points) || Number(form.points) <= 0) return setMsg("Informe uma pontuação válida.");
+    await createMission(form.title.trim(), form.desc.trim(), form.tip.trim(), form.category, form.difficulty, form.points, form.frequency, form.requiredLevel, form.allowedDays);
+    setForm(EMPTY);
+    setMsg("Missão criada com sucesso!");
+    setTimeout(() => { setMsg(""); onCreated && onCreated(); }, 1500);
+  };
+
+  return (
+    <div className="panel panel-cyan" style={{padding:28, borderRadius:4}}>
+      <div style={{fontFamily:"Orbitron", fontSize:13, fontWeight:700, color:"#ffdd00", marginBottom:24, letterSpacing:2}}>
+        ⬡ CADASTRAR NOVA MISSÃO
+      </div>
+      <div style={{display:"flex", flexDirection:"column", gap:18}}>
+        <div>
+          <label className="label">Título da missão</label>
+          <input className="input" placeholder="Ex: Vigília Secreta..." value={form.title} onChange={set("title")} />
+        </div>
+        <div>
+          <label className="label">Descrição / O que o jovem deve fazer</label>
+          <textarea className="input" placeholder="Descreva claramente o objetivo da missão..."
+            value={form.desc} onChange={set("desc")} rows={3}
+            style={{resize:"vertical", fontFamily:"'Rajdhani',sans-serif", lineHeight:1.5}} />
+        </div>
+        <div>
+          <label className="label" style={{color:"#ffdd00"}}>💡 Dica / Sugestão <span style={{fontWeight:400, color:"#6a6a9a"}}>(opcional)</span></label>
+          <textarea className="input" placeholder="Ex: Você pode fazer isso logo após o culto..."
+            value={form.tip} onChange={set("tip")} rows={3}
+            style={{resize:"vertical", fontFamily:"'Rajdhani',sans-serif", lineHeight:1.5,
+              borderColor:"rgba(255,215,0,.3)", background:"linear-gradient(135deg,rgba(255,215,0,.05),rgba(191,0,255,.04))"}} />
+          <div style={{fontSize:11, color:"#ffd70088", marginTop:4, fontStyle:"italic"}}>
+            Esta dica aparecerá destacada na missão para orientar os participantes.
+          </div>
+        </div>
+        <div className="grid-2">
+          <div>
+            <label className="label">Categoria</label>
+            <select className="select" value={form.category} onChange={set("category")}>
+              {CATEGORIES.map(c => <option key={c} value={c} style={{background:"#0d0a2e"}}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">Pontuação</label>
+            <input className="input" type="number" min="1"
+              placeholder={selDiff ? `Sugerido: ${selDiff.pts}` : "Ex: 200"}
+              value={form.points} onChange={set("points")} />
+          </div>
+        </div>
+        <div>
+          <label className="label">Dificuldade</label>
+          <div style={{display:"flex", gap:6, flexWrap:"wrap", marginTop:4}}>
+            {DIFFICULTIES.map(d => (
+              <button key={d.label} className="diff-btn"
+                style={{
+                  borderColor: d.color,
+                  color:       form.difficulty === d.label ? "#000" : d.color,
+                  background:  form.difficulty === d.label ? d.color : "transparent",
+                  fontWeight:  form.difficulty === d.label ? "700" : "400",
+                  fontSize:    d.label.length > 8 ? "8px" : "9px",
+                }}
+                onClick={() => setForm(f => ({...f, difficulty: d.label, points: f.points || String(d.pts)}))}>
+                {d.label}
+              </button>
+            ))}
+          </div>
+          {selDiff && (
+            <div style={{marginTop:8, fontSize:11, color: selDiff.color, fontFamily:"Orbitron", letterSpacing:1}}>
+              ◈ Pontuação sugerida para este nível: {selDiff.pts} pts
+            </div>
+          )}
+        </div>
+        <div>
+          <label className="label">Frequência</label>
+          <FreqSelector value={form.frequency} onChange={v => setForm(f => ({...f, frequency: v}))} />
+          <div style={{marginTop:8, fontSize:11, color:"#6a6a9a", fontStyle:"italic"}}>
+            {form.frequency === "once" && "Missão única — pode ser feita apenas uma vez."}
+            {form.frequency === "daily" && "Missão diária — pode ser feita todos os dias."}
+            {form.frequency === "weekly" && "Missão semanal — pode ser feita uma vez por semana."}
+          </div>
+        </div>
+        <div>
+          <label className="label" style={{color:"#ff2255"}}>🔒 Nível mínimo exigido <span style={{fontWeight:400, color:"#6a6a9a"}}>(opcional)</span></label>
+          <select className="select" value={form.requiredLevel} onChange={set("requiredLevel")}>
+            <option value="" style={{background:"#0d0a2e"}}>Disponível para todos</option>
+            {LEVEL_NAMES.map(l => <option key={l} value={l} style={{background:"#0d0a2e"}}>{l}</option>)}
+          </select>
+          {form.requiredLevel && (
+            <div style={{marginTop:6, fontSize:11, fontFamily:"Orbitron", color: LEVEL_NAME_COLORS[form.requiredLevel]||"#ff2255", letterSpacing:1}}>
+              🔒 Só visível/enviável por jogadores no nível {form.requiredLevel} ou acima.
+            </div>
+          )}
+        </div>
+        <div>
+          <label className="label" style={{color:"#00e5ff"}}>📅 Dias permitidos <span style={{fontWeight:400, color:"#6a6a9a"}}>(vazio = todos os dias)</span></label>
+          <DaysSelector value={form.allowedDays} onChange={v => setForm(f => ({...f, allowedDays: v}))} />
+          {form.allowedDays && form.allowedDays.length > 0 && (
+            <div style={{marginTop:6, fontSize:11, fontFamily:"Orbitron", color:"#00e5ff", letterSpacing:1}}>
+              📅 Disponível apenas: {getAllowedDaysLabel(form.allowedDays)}
+            </div>
+          )}
+        </div>
+        {msg && <div className={msg.startsWith("✓") ? "success-msg" : "error-msg"}>{msg}</div>}
+        <button className="btn btn-yellow" style={{width:"100%", fontSize:13}} onClick={handleCreate}>
+          + CRIAR MISSÃO
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function getPresencaStatus(user) {
+  const today = todayStr();
+  const last  = user.lastLoginBonus || user.lastActiveDay || null;
+  if (!last) return { label: "💤 Ausente", color: "#ff2255", dias: 999 };
+  const diff = Math.floor((new Date(today) - new Date(last)) / 86400000);
+  if (diff <= 1) return { label: "⚔️ Em Combate", color: "#00ff44", dias: diff };
+  if (diff <= 4) return { label: "⚡ Em Marcha",  color: "#ffdd00", dias: diff };
+  return       { label: "💤 Ausente",    color: "#ff2255", dias: diff };
+}
+
+function Ranking({ currentUserId }) {
+  const [storeData, setStoreData] = useState(getStore());
+  useEffect(() => {
+    // Retorna a função de unsubscribe como cleanup — evita listener órfão após desmontagem
+    const unsubscribe = subscribe(s => setStoreData(s));
+    return () => unsubscribe();
+  }, []);
+  const players = storeData.users.filter(u => u.role === "user").sort((a, b) => b.points - a.points);
+  const medals = ["#ffdd00", "#c0c0c0", "#cd7f32"];
+  return (
+    <div style={{display:"flex", flexDirection:"column", gap:10}}>
+      {players.length === 0 && (
+        <div style={{textAlign:"center", color:"#6a6a9a", padding:40}}>
+          <div style={{fontFamily:"Orbitron", fontSize:20, marginBottom:8}}>◈</div>
+          Nenhum participante ainda.
+        </div>
+      )}
+      {players.map((u, i) => {
+        const lvl      = getEffectiveLevelInfo(u.id) || getLevelInfo(u.points);
+        const isMe     = u.id === currentUserId;
+        const medal    = medals[i];
+        const presenca = getPresencaStatus(u);
+        return (
+          <div key={u.id} className="panel" style={{
+            padding:"14px 18px", borderRadius:4,
+            borderColor: isMe ? "#00e5ff88" : medal ? medal + "66" : "rgba(0,229,255,.15)",
+            boxShadow: isMe ? "0 0 16px #00e5ff22" : "none",
+            display:"flex", alignItems:"center", gap:14
+          }}>
+            <div style={{fontFamily:"Orbitron", fontWeight:900, fontSize:18, color: medal || "#6a6a9a", minWidth:28, textAlign:"center"}}>{i + 1}</div>
+            <div style={{flex:1}}>
+              <div style={{display:"flex", alignItems:"center", gap:8, flexWrap:"wrap"}}>
+                <span style={{fontFamily:"Orbitron", fontSize:13, color: isMe ? "#00ccff" : "#e0e0ff"}}>{u.name}</span>
+                {isMe && <span style={{fontFamily:"Orbitron", fontSize:8, color:"#00ccff", border:"1px solid #00e5ff44", padding:"2px 6px"}}>VOCE</span>}
+                <span style={{fontSize:9, color: presenca.color, fontFamily:"Orbitron", letterSpacing:1}}>{presenca.label}</span>
+              </div>
+              <div style={{fontFamily:"Orbitron", fontSize:10, fontWeight:700, color: lvl.color, marginTop:3, letterSpacing:1}}>{lvl.name}</div>
+              {(() => {
+                const a = getArchetype(u.id);
+                if (!a) return null;
+                if (a.title === "REGENTE DO EQUILÍBRIO") return <div style={{marginTop:4}}><RegenteBadge userId={u.id} /></div>;
+                return <div style={{fontFamily:"Orbitron", fontSize:9, color: a.color, marginTop:2, letterSpacing:1}}>⬡ {a.title}</div>;
+              })()}
+            </div>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontFamily:"Orbitron", fontWeight:900, fontSize:20, color:"#ffdd00"}}>{u.points}</div>
+              <div style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", letterSpacing:1}}>PTS</div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function useCountdown() {
+  const [timeLeft, setTimeLeft] = React.useState("");
+  React.useEffect(() => {
+    function calc() {
+      const now = new Date();
+      const midnight = new Date();
+      midnight.setHours(24, 0, 0, 0);
+      const diff = midnight - now;
+      const h = String(Math.floor(diff / 3600000)).padStart(2, "0");
+      const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, "0");
+      const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, "0");
+      setTimeLeft(`${h}:${m}:${s}`);
+    }
+    calc();
+    const timer = setInterval(calc, 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return timeLeft;
+}
+
+
+function ArchetypeCard({ userId, showDesc }) {
+  const archetype = getArchetype(userId);
+  if (!archetype) return null;
+  return (
+    <div className="panel" style={{
+      padding:"18px 22px", borderRadius:4, marginBottom:16,
+      borderColor: archetype.color + "66",
+      boxShadow: `0 0 18px ${archetype.color}18`,
+      background: `linear-gradient(135deg, rgba(19,16,58,.97), rgba(19,16,58,.92))`,
+      width:"100%"
+    }}>
+      <div style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", letterSpacing:2, marginBottom:6}}>ESPECIALIDADE ATUAL</div>
+      {archetype.pilar && (
+        <div style={{fontFamily:"Orbitron", fontSize:9, color: archetype.color+"99", letterSpacing:2, marginBottom:4}}>{archetype.pilar}</div>
+      )}
+      <div style={{fontFamily:"Orbitron", fontWeight:900, fontSize:20, color: archetype.color, letterSpacing:1, marginBottom:10}}>
+        {archetype.title === "REGENTE DO EQUILÍBRIO"
+          ? <RegenteBadge userId={userId} style={{fontSize:14}} />
+          : archetype.title}
+      </div>
+      {archetype.desc && (
+        <p style={{fontSize:14, color:"#b0b8e0", lineHeight:1.8, margin:0}}>{archetype.desc}</p>
+      )}
+    </div>
+  );
+}
+
+function RadarChart({ userId }) {
+  const size = 280;
+  const cx = size / 2, cy = size / 2, r = 100;
+  const cats = getCategoryPoints(userId);
+  const labels = ["Espiritualidade","Sabedoria","Resistência","Influência","Sinaxe"];
+  const colors = ["#7700ff","#00ccff","#ff4400","#ffdd00","#00ff44"];
+  const maxVal = 1000;
+
+  function polar(angle, radius) {
+    const a = (angle - 90) * Math.PI / 180;
+    return [cx + radius * Math.cos(a), cy + radius * Math.sin(a)];
+  }
+
+  const angles = labels.map((_, i) => (i * 360) / labels.length);
+
+  const gridLevels = [0.25, 0.5, 0.75, 1.0];
+  const gridPolygons = gridLevels.map(lvl => {
+    const pts = angles.map(a => polar(a, r * lvl).join(",")).join(" ");
+    return pts;
+  });
+
+  const dataPoints = labels.map((l, i) => {
+    const val = Math.min(cats[l] || 0, maxVal);
+    const pct = val / maxVal;
+    return polar(angles[i], r * pct);
+  });
+  const dataPath = dataPoints.map((p, i) => `${i===0?"M":"L"}${p[0]},${p[1]}`).join(" ") + "Z";
+
+  return (
+    <div style={{display:"flex", flexDirection:"column", alignItems:"center", gap:16}}>
+      <svg width={size} height={size} style={{overflow:"visible"}}>
+        {gridPolygons.map((pts, gi) => (
+          <polygon key={gi} points={pts}
+            fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+        ))}
+        {angles.map((a, i) => {
+          const [x2, y2] = polar(a, r);
+          return <line key={i} x1={cx} y1={cy} x2={x2} y2={y2} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />;
+        })}
+        <path d={dataPath} fill="rgba(0,229,255,0.15)" stroke="#00ccff" strokeWidth="2" />
+        {dataPoints.map(([x, y], i) => (
+          <circle key={i} cx={x} cy={y} r="5" fill={colors[i]} stroke="#0d0a2e" strokeWidth="2" />
+        ))}
+        {labels.map((l, i) => {
+          const [x, y] = polar(angles[i], r + 24);
+          const val = cats[l] || 0;
+          return (
+            <g key={i}>
+              <text x={x} y={y} textAnchor="middle" dominantBaseline="middle"
+                style={{fontFamily:"Orbitron,monospace", fontSize:"8px", fill: colors[i], letterSpacing:"1px"}}>
+                {l.toUpperCase().slice(0,4)}
+              </text>
+              <text x={x} y={y+13} textAnchor="middle" dominantBaseline="middle"
+                style={{fontFamily:"Orbitron,monospace", fontSize:"9px", fill:"#ffd700", fontWeight:"bold"}}>
+                {val}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+      <div style={{display:"flex", flexWrap:"wrap", gap:10, justifyContent:"center"}}>
+        {labels.map((l, i) => (
+          <div key={l} style={{display:"flex", alignItems:"center", gap:5}}>
+            <div style={{width:8, height:8, borderRadius:2, background:colors[i]}} />
+            <span style={{fontFamily:"Orbitron", fontSize:9, color:colors[i], letterSpacing:1}}>{l.slice(0,4).toUpperCase()}</span>
+            <span style={{fontFamily:"Orbitron", fontSize:9, color:"#ffd700"}}>{cats[l]||0}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SkillsTable({ userId }) {
+  const [open, setOpen] = React.useState(null);
+  const [storeData, setStoreData] = React.useState(getStore());
+  React.useEffect(() => {
+    // Retorna a função de unsubscribe como cleanup — evita listener órfão após desmontagem
+    const unsubscribe = subscribe(s => setStoreData(s));
+    return () => unsubscribe();
+  }, []);
+
+  const primaries   = Object.entries(ARCHETYPES_PRIMARY).map(([cat, v]) => ({...v, cat}));
+  const secondaries = Object.entries(ARCHETYPES_SECONDARY).map(([combo, v]) => ({...v, combo}));
+  const userArchetype = userId ? getArchetype(userId) : null;
+  const hasRegente    = userArchetype && userArchetype.title === "REGENTE DO EQUILÍBRIO";
+  const u = storeData.users.find(u => u.id === userId);
+  const regenteRevoked       = u?.regenteRevoked && !u?.regenteReconquistado;
+  const reconquistaMissoes   = u?.regenteReconquistaMissoes || [];
+  const reconquistaProgress  = reconquistaMissoes.length;
+
+  // XP por categoria — acumulado total
+  const cats = userId ? getCategoryPoints(userId) : {};
+  const MAX_XP = 5000;
+  const SKILLS_ORDER = ["Espiritualidade","Sabedoria","Resistência","Influência","Sinaxe"];
+  const SKILL_COLORS = { Espiritualidade:"#7700ff", Sabedoria:"#00ccff", Resistência:"#ff4400", Influência:"#ffdd00", Sinaxe:"#00ff44" };
+
+  const regente = hasRegente
+    ? { title:"REGENTE DO EQUILÍBRIO", color:"#ffd700", pilar:"Convergência Plena", desc:"Aquele que se estabelece como o ponto de estabilidade máxima, atuando como a personificação da integridade que sustenta todo o ecossistema em qualquer estação. Representa o estágio de maturidade plena onde a disciplina dos pilares se torna natureza e a liderança se manifesta como serviço puro. É o eixo central que harmoniza a força, a sabedoria e a unidade, garantindo que o propósito permaneça inabalável enquanto o grupo avança em total sincronia.", cat:"Conquistado" }
+    : { title:"REGENTE DO EQUILÍBRIO", color:"#ffd700", pilar:"???", desc:"??? ??? ??? ??? ??? ??? ??? ??? ??? ??? ??? ??? ??? ??? ??? ??? ??? ???", cat:"???", locked:true };
+
+  const Row = ({item, key2}) => {
+    const isOpen   = open === key2;
+    const isLocked = item.locked;
+    return (
+      <div key={key2} style={{borderBottom:"1px solid rgba(255,255,255,.06)"}}>
+        <div onClick={() => setOpen(isOpen ? null : key2)}
+          style={{display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px",
+            cursor:"pointer", background: isOpen ? `${item.color}11` : "transparent", transition:"background .2s"}}>
+          <div>
+            <div style={{fontFamily:"Orbitron", fontSize:11, fontWeight:700, color: item.color, letterSpacing:1}}>
+              {item.title}
+            </div>
+            <div style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", marginTop:2, letterSpacing:1}}>
+              {item.pilar || item.combo || item.cat}
+            </div>
+            {isLocked && !regenteRevoked && <div style={{fontFamily:"Orbitron", fontSize:9, color:"#ffd70088", marginTop:4, letterSpacing:1}}>🔒 DESCRIÇÃO BLOQUEADA</div>}
+            {isLocked && regenteRevoked && (
+              <div style={{marginTop:6}}>
+                <div style={{fontFamily:"Orbitron", fontSize:9, color:"#ff4400", letterSpacing:1, marginBottom:4}}>
+                  ⚠ ARQUÉTIPO SUSPENSO
+                </div>
+                <div style={{display:"flex", gap:6, alignItems:"center"}}>
+                  {[0,1,2].map(i => (
+                    <div key={i} style={{
+                      width:16, height:16, borderRadius:2,
+                      background: i < reconquistaProgress ? "#ffd700" : "rgba(255,215,0,.1)",
+                      border: `1px solid ${i < reconquistaProgress ? "#ffd700" : "rgba(255,215,0,.3)"}`,
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                      fontSize:10, color: i < reconquistaProgress ? "#000" : "#ffd70066"
+                    }}>{i < reconquistaProgress ? "✓" : "?"}</div>
+                  ))}
+                  <span style={{fontFamily:"Orbitron", fontSize:8, color:"#ffd70088", letterSpacing:1}}>
+                    {reconquistaProgress}/3 CONCLUÍDAS
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+          <div style={{fontFamily:"Orbitron", fontSize:12, color: item.color, marginLeft:8}}>{isOpen ? "▲" : "▼"}</div>
+        </div>
+        {isOpen && (
+          <div style={{padding:"0 16px 14px 16px"}}>
+            {isLocked
+              ? <p style={{fontSize:18, color:"#ffd70066", letterSpacing:4, lineHeight:2, margin:0, fontFamily:"Orbitron"}}>??? ??? ??? ??? ??? ??? ??? ??? ??? ??? ??? ??? ???</p>
+              : <p style={{fontSize:14, color:"#b0b8e0", lineHeight:1.8, margin:0}}>{item.desc}</p>
+            }
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Barras de XP por habilidade
+  const XPBars = () => (
+    <div className="panel panel-cyan" style={{borderRadius:4, padding:"16px 20px", width:"100%"}}>
+      <div style={{fontFamily:"Orbitron", fontSize:10, color:"#00ccff", letterSpacing:2, marginBottom:16}}>
+        ◈ EXPERIÊNCIA POR HABILIDADE
+      </div>
+      <div style={{display:"flex", flexDirection:"column", gap:14}}>
+        {SKILLS_ORDER.map(skill => {
+          const xp    = cats[skill] || 0;
+          const pct   = Math.min(100, (xp / MAX_XP) * 100);
+          const color = SKILL_COLORS[skill];
+          const tier  = xp >= 2500 ? "◆ MESTRE" : xp >= 1500 ? "◈ AVANÇADO" : xp >= 700 ? "▲ INTERMEDIÁRIO" : xp >= 200 ? "▷ INICIANTE" : "○ NOVATO";
+          const tierColor = xp >= 2500 ? "#ffd700" : xp >= 1500 ? color : xp >= 700 ? color+"cc" : "#6a6a9a";
+          return (
+            <div key={skill}>
+              <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6}}>
+                <div style={{display:"flex", alignItems:"center", gap:8}}>
+                  <span style={{fontFamily:"Orbitron", fontSize:10, fontWeight:700, color, letterSpacing:1}}>
+                    {skill.slice(0,4).toUpperCase()}
+                  </span>
+                  <span style={{fontFamily:"Orbitron", fontSize:8, color: tierColor, letterSpacing:1}}>{tier}</span>
+                </div>
+                <span style={{fontFamily:"Orbitron", fontSize:10, color:"#ffd700", fontWeight:700}}>
+                  {xp.toLocaleString("pt-BR")} / {MAX_XP.toLocaleString("pt-BR")}
+                </span>
+              </div>
+              <div style={{height:8, background:"rgba(255,255,255,.06)", borderRadius:4, overflow:"hidden", position:"relative"}}>
+                <div style={{
+                  height:"100%", borderRadius:4, width:`${pct}%`,
+                  background: xp >= 2500
+                    ? `linear-gradient(90deg, ${color}, #ffd700)`
+                    : `linear-gradient(90deg, ${color}88, ${color})`,
+                  boxShadow: `0 0 8px ${color}66`,
+                  transition:"width .8s ease",
+                  position:"relative"
+                }}>
+                  {xp >= 2500 && (
+                    <div style={{position:"absolute",right:4,top:"50%",transform:"translateY(-50%)",
+                      fontSize:8, color:"#000", fontWeight:700, fontFamily:"Orbitron"}}>✦</div>
+                  )}
+                </div>
+              </div>
+              {xp >= 2500 && (
+                <div style={{fontFamily:"Orbitron", fontSize:8, color:"#ffd700", letterSpacing:1, marginTop:3, textAlign:"right"}}>
+                  NÍVEL MÁXIMO ATINGIDO
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{width:"100%", display:"flex", flexDirection:"column", gap:20}}>
+      {/* Radar + XP Bars lado a lado */}
+      <div className="skills-grid" style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:16}}>
+        <div style={{display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center"}}>
+          <RadarChart userId={userId} />
+        </div>
+        <XPBars />
+      </div>
+
+      {/* Arquétipos */}
+      <div className="panel panel-cyan" style={{borderRadius:4, overflow:"hidden"}}>
+        <div style={{padding:"14px 16px", borderBottom:"1px solid rgba(0,229,255,.2)", fontFamily:"Orbitron", fontSize:10, color:"#00ccff", letterSpacing:2}}>
+          ◈ FOCO PRIMÁRIO — 1 HABILIDADE
+        </div>
+        {primaries.map(item => <Row key2={item.cat} item={item} />)}
+      </div>
+      <div className="panel panel-cyan" style={{borderRadius:4, overflow:"hidden"}}>
+        <div style={{padding:"14px 16px", borderBottom:"1px solid rgba(0,229,255,.2)", fontFamily:"Orbitron", fontSize:10, color:"#ff4dbb", letterSpacing:2}}>
+          ◈ FOCO SECUNDÁRIO — 2 HABILIDADES
+        </div>
+        {secondaries.map(item => <Row key2={item.combo} item={item} />)}
+      </div>
+      <div className="panel panel-cyan" style={{borderRadius:4, overflow:"hidden"}}>
+        <div style={{padding:"14px 16px", borderBottom:"1px solid rgba(0,229,255,.2)", fontFamily:"Orbitron", fontSize:10, color:"#ffd700", letterSpacing:2}}>
+          ◈ ??? — ???
+        </div>
+        <Row key2="regente" item={regente} />
+      </div>
+    </div>
+  );
+}
+
+// ── MissionsTab — filtros por pilar e status, hooks em componente próprio ───
+const PILARES_LIST  = ["TODOS","Espiritualidade","Sabedoria","Resistência","Influência","Sinaxe"];
+const PILAR_COLORS_MAP = { Espiritualidade:"#7700ff", Sabedoria:"#00ccff", Resistência:"#ff4400", Influência:"#ffdd00", Sinaxe:"#00ff44" };
+const STATUS_OPTIONS = [
+  { key:"TODAS",    label:"TODAS"       },
+  { key:"FEITAS",   label:"✓ FEITAS"    },
+  { key:"PENDENTES",label:"⏳ PENDENTES" },
+];
+
+function MissionsTab({ missions, submissions, user, onSubmit }) {
+  const [filterPilar,  setFilterPilar]  = useState("TODOS");
+  const [filterStatus, setFilterStatus] = useState("TODAS");
+
+  // ── useMemo: recalcula contadores apenas quando submissions ou missions mudam ─
+  const { totalFeitas, totalPendentes, totalAll } = React.useMemo(() => ({
+    totalFeitas:    submissions.filter(s => s.userId === user.id && s.status === "approved").length,
+    totalPendentes: submissions.filter(s => s.userId === user.id && s.status === "pending").length,
+    totalAll:       missions.filter(m => m && m.id).length,
+  }), [missions, submissions, user.id]);
+
+  return (
+    <div>
+      {/* Filtro por pilar */}
+      <div style={{marginBottom:10}}>
+        <div style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", letterSpacing:2, marginBottom:6}}>FILTRAR POR PILAR</div>
+        <div style={{display:"flex", gap:6, flexWrap:"wrap"}}>
+          {PILARES_LIST.map(p => {
+            const col    = p === "TODOS" ? "#00e5ff" : PILAR_COLORS_MAP[p];
+            const active = filterPilar === p;
+            return (
+              <button key={p} onClick={() => setFilterPilar(p)}
+                style={{fontFamily:"Orbitron", fontSize:9, letterSpacing:1, padding:"7px 12px",
+                  border:`1px solid ${active ? col : col+"55"}`,
+                  color:      active ? "#000" : col,
+                  background: active ? col    : "transparent",
+                  cursor:"pointer", borderRadius:2, transition:"all .2s",
+                  fontWeight: active ? "700"  : "400"}}>
+                {p === "TODOS" ? "◈ TODOS" : p.slice(0,4).toUpperCase()}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Filtro por status */}
+      <div style={{display:"flex", gap:6, alignItems:"center", flexWrap:"wrap", marginBottom:10}}>
+        {STATUS_OPTIONS.map(s => {
+          const active = filterStatus === s.key;
+          const col    = s.key === "FEITAS" ? "#39ff14" : s.key === "PENDENTES" ? "#ffd700" : "#00e5ff";
+          const count  = s.key === "FEITAS" ? totalFeitas : s.key === "PENDENTES" ? totalPendentes : totalAll;
+          return (
+            <button key={s.key} onClick={() => setFilterStatus(s.key)}
+              style={{fontFamily:"Orbitron", fontSize:9, letterSpacing:1, padding:"7px 12px",
+                border:`1px solid ${active ? col : col+"44"}`,
+                color:      active ? "#000" : col,
+                background: active ? col    : "transparent",
+                cursor:"pointer", borderRadius:2, transition:"all .2s",
+                fontWeight: active ? "700"  : "400"}}>
+              {s.label} <span style={{opacity:.8}}>({count})</span>
+            </button>
+          );
+        })}
+        {(filterPilar !== "TODOS" || filterStatus !== "TODAS") && (
+          <button onClick={() => { setFilterPilar("TODOS"); setFilterStatus("TODAS"); }}
+            style={{fontFamily:"Orbitron", fontSize:9, padding:"7px 10px",
+              border:"1px solid rgba(255,34,85,.3)", color:"#ff2255",
+              background:"transparent", cursor:"pointer", borderRadius:2}}>
+            ✕ LIMPAR
+          </button>
+        )}
+      </div>
+
+      {/* Lista de missões — componente isolado com useMemo interno */}
+      <MissionList
+        missions={missions}
+        submissions={submissions}
+        user={user}
+        onSubmit={onSubmit}
+        filterPilar={filterPilar}
+        filterStatus={filterStatus}
+        pilarColors={PILAR_COLORS_MAP}
+      />
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DESTINO DASHBOARD — Tela de Seleção de Modo (Neon/Cyberpunk)
+// ═══════════════════════════════════════════════════════════════════════════════
+function DestinoDashboard({ userId, userPoints, userName, userLevel, onIrMissoes }) {
+  const { useState: useS } = React;
+  const [modo, setModo] = useS(null); // null | 'guiada' | 'livre'
+
+  // ── Sub-tela: Modo Livre ────────────────────────────────────────────────────
+  if (modo === 'livre') {
+    return (
+      <div>
+        <button onClick={() => setModo(null)}
+          style={{fontFamily:"Orbitron",fontSize:9,color:"#6a6a9a",letterSpacing:2,
+            background:"none",border:"none",cursor:"pointer",marginBottom:20,padding:0,
+            display:"flex",alignItems:"center",gap:8}}
+          onMouseOver={e=>e.currentTarget.style.color="#00e5ff"}
+          onMouseOut={e=>e.currentTarget.style.color="#6a6a9a"}>
+          ← VOLTAR À SELEÇÃO
+        </button>
+
+        {/* Card explicativo Modo Livre */}
+        <div style={{marginBottom:20,padding:"18px 20px",borderRadius:6,
+          background:"linear-gradient(135deg,rgba(155,48,255,.08),rgba(155,48,255,.03))",
+          border:"1px solid rgba(155,48,255,.3)"}}>
+          <div style={{position:"relative",height:3,marginBottom:16,borderRadius:99,overflow:"hidden",
+            background:"rgba(155,48,255,.15)"}}>
+            <div style={{position:"absolute",inset:0,background:"linear-gradient(90deg,transparent,#9b30ff,transparent)",
+              animation:"destino-scanline 2.5s linear infinite"}}/>
+          </div>
+          <div style={{fontFamily:"Orbitron",fontSize:13,fontWeight:700,color:"#bf80ff",
+            letterSpacing:2,marginBottom:6}}>🎮 MODO LIVRE — MAPA DO ACAMPA</div>
+          <div style={{fontSize:13,color:"#9090bb",lineHeight:1.7,marginBottom:14}}>
+            Acesso total às missões do Acampa Seed 2026. Evolua nos 5 pilares no seu próprio ritmo e conquiste o seu arquétipo.
+          </div>
+          <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+            {[
+              {cor:"#7700ff",label:"Espiritualidade"},
+              {cor:"#00ccff",label:"Sabedoria"},
+              {cor:"#ff4400",label:"Resistência"},
+              {cor:"#ffdd00",label:"Influência"},
+              {cor:"#00ff44",label:"Sinaxe"},
+            ].map(p => (
+              <div key={p.label} style={{display:"flex",alignItems:"center",gap:5}}>
+                <div style={{width:7,height:7,borderRadius:99,background:p.cor,
+                  boxShadow:`0 0 6px ${p.cor}`}}/>
+                <span style={{fontFamily:"Orbitron",fontSize:8,color:p.cor,letterSpacing:1}}>{p.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Botão de acesso direto às Missões */}
+        <button onClick={onIrMissoes}
+          style={{width:"100%",padding:"16px 0",fontFamily:"Orbitron",fontSize:12,fontWeight:700,
+            letterSpacing:2,border:"none",borderRadius:6,cursor:"pointer",marginBottom:16,
+            background:"linear-gradient(135deg,#7700cc,#9b30ff,#7700cc)",
+            color:"#fff",boxShadow:"0 0 24px rgba(155,48,255,.5)"}}>
+          🗺️ ABRIR MAPA DE MISSÕES
+        </button>
+
+        {/* Dica */}
+        <div style={{padding:"10px 14px",borderRadius:4,
+          background:"rgba(155,48,255,.06)",border:"1px solid rgba(155,48,255,.15)",
+          fontFamily:"Orbitron",fontSize:8,color:"#7a5a9a",letterSpacing:1,textAlign:"center"}}>
+          💡 USE AS ABAS ACIMA PARA NAVEGAR ENTRE MISSÕES, RANKING, EXTRATO E HABILIDADES
+        </div>
+      </div>
+    );
+  }
+
+  // ── Sub-tela: Jornada Guiada ────────────────────────────────────────────────
+  if (modo === 'guiada') {
+    return (
+      <div>
+        <button onClick={() => setModo(null)}
+          style={{fontFamily:"Orbitron",fontSize:9,color:"#6a6a9a",letterSpacing:2,
+            background:"none",border:"none",cursor:"pointer",marginBottom:20,padding:0,
+            display:"flex",alignItems:"center",gap:8}}
+          onMouseOver={e=>e.currentTarget.style.color="#00e5ff"}
+          onMouseOut={e=>e.currentTarget.style.color="#6a6a9a"}>
+          ← VOLTAR À SELEÇÃO
+        </button>
+        <JornadaGuiada userId={userId} userPoints={userPoints} />
+      </div>
+    );
+  }
+
+  // ── Tela principal: Seleção de Destino ─────────────────────────────────────
+  const totalCasasConq = (() => {
+    try {
+      const p = JSON.parse(localStorage.getItem(`jornada_prog_${userId}`) || '{}');
+      return Object.values(p).filter(Boolean).length;
+    } catch(e) { return 0; }
+  })();
+
+  return (
+    <div style={{maxWidth:480,margin:"0 auto"}}>
+
+      {/* ── Título neon ── */}
+      <div style={{textAlign:"center",marginBottom:28,paddingTop:8}}>
+        {/* Linha decorativa topo */}
+        <div style={{height:1,background:"linear-gradient(90deg,transparent,rgba(0,229,255,.4),rgba(155,48,255,.4),transparent)",marginBottom:20}}/>
+
+        {/* Badge de nível */}
+        <div className="destino-badge" style={{display:"inline-flex",alignItems:"center",gap:8,
+          background:"rgba(0,229,255,.08)",border:"1px solid rgba(0,229,255,.3)",
+          borderRadius:99,padding:"5px 14px",marginBottom:14}}>
+          <div style={{width:8,height:8,borderRadius:"50%",background:"#00e5ff",
+            boxShadow:"0 0 8px #00e5ff"}}/>
+          <span style={{fontFamily:"Orbitron",fontSize:9,color:"#00e5ff",letterSpacing:2}}>
+            {userLevel?.name || "RECRUTA"}
+          </span>
+          <span style={{fontFamily:"Orbitron",fontSize:8,color:"#6a6a9a"}}>·</span>
+          <span style={{fontFamily:"Orbitron",fontSize:9,color:"#ffdd00"}}>{userPoints} PTS</span>
+        </div>
+
+        <h2 className="destino-title-glow" style={{fontFamily:"Orbitron",fontSize:22,fontWeight:900,
+          letterSpacing:3,lineHeight:1.2,marginBottom:8,
+          background:"linear-gradient(135deg,#00e5ff 30%,#9b30ff 70%,#ffd700)",
+          WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>
+          SELECIONE<br/>SEU DESTINO
+        </h2>
+        <div style={{fontFamily:"Orbitron",fontSize:9,color:"#6a6a9a",letterSpacing:3}}>
+          ACAMPA SEED 2026 · ESCOLHA SUA JORNADA
+        </div>
+
+        <div style={{height:1,background:"linear-gradient(90deg,transparent,rgba(155,48,255,.4),rgba(0,229,255,.4),transparent)",marginTop:20}}/>
+      </div>
+
+      {/* ── Grid de cards ── */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}}>
+
+        {/* ── CARD JORNADA GUIADA ── */}
+        <div className="destino-card-cyan" onClick={() => setModo('guiada')}
+          style={{padding:"20px 16px",textAlign:"center"}}>
+
+          {/* Cantos decorativos */}
+          {[["0","0","borderTop","borderLeft"],["0","auto","borderTop","borderRight"],
+            ["auto","0","borderBottom","borderLeft"],["auto","auto","borderBottom","borderRight"]
+          ].map(([t,r,b1,b2],i)=>(
+            <div key={i} style={{position:"absolute",top:t==="auto"?undefined:6,right:r==="auto"?undefined:6,
+              bottom:t==="auto"?6:undefined,left:r==="auto"?undefined:6,
+              width:12,height:12,
+              borderTop: b1==="borderTop"?"2px solid rgba(0,229,255,.6)":undefined,
+              borderBottom: b1==="borderBottom"?"2px solid rgba(0,229,255,.6)":undefined,
+              borderLeft: b2==="borderLeft"?"2px solid rgba(0,229,255,.6)":undefined,
+              borderRight: b2==="borderRight"?"2px solid rgba(0,229,255,.6)":undefined,
+            }}/>
+          ))}
+
+          {/* Linha de scan animada */}
+          <div style={{position:"absolute",left:0,right:0,height:2,
+            background:"linear-gradient(90deg,transparent,rgba(0,229,255,.4),transparent)",
+            animation:"destino-scanline 3s linear infinite",pointerEvents:"none"}}/>
+
+          {/* Ícone */}
+          <div className="destino-icon-float" style={{fontSize:38,marginBottom:10,color:"#00e5ff",
+            filter:"drop-shadow(0 0 12px rgba(0,229,255,.8))"}}>
+            🔥
+          </div>
+
+          <div style={{fontFamily:"Orbitron",fontSize:11,fontWeight:900,color:"#00e5ff",
+            letterSpacing:1,marginBottom:6,lineHeight:1.3}}>
+            JORNADA<br/>GUIADA
+          </div>
+          <div style={{fontSize:11,color:"#7aaccc",lineHeight:1.5,marginBottom:10}}>
+            Passo a passo para o crescimento espiritual
+          </div>
+          <div style={{fontFamily:"Orbitron",fontSize:8,color:"#004466",marginBottom:12,letterSpacing:1}}>
+            META: TRANSCENDENTE
+          </div>
+
+          {/* Progresso */}
+          {totalCasasConq > 0 && (
+            <div style={{marginBottom:10}}>
+              <div style={{fontFamily:"Orbitron",fontSize:7,color:"#00e5ff",letterSpacing:1,marginBottom:4}}>
+                {totalCasasConq}/12 CASAS
+              </div>
+              <div style={{height:3,background:"rgba(0,229,255,.15)",borderRadius:99,overflow:"hidden"}}>
+                <div style={{height:"100%",width:`${Math.round(totalCasasConq/12*100)}%`,
+                  background:"#00e5ff",borderRadius:99,boxShadow:"0 0 6px #00e5ff"}}/>
+              </div>
+            </div>
+          )}
+
+          <div style={{width:"100%",padding:"8px 0",fontFamily:"Orbitron",fontSize:9,
+            fontWeight:700,letterSpacing:1,border:"1px solid rgba(0,229,255,.5)",
+            borderRadius:4,color:"#00e5ff",background:"rgba(0,229,255,.08)",
+            boxShadow:"0 0 10px rgba(0,229,255,.2)"}}>
+            {totalCasasConq > 0 ? "CONTINUAR" : "INICIAR"}
+          </div>
+        </div>
+
+        {/* ── CARD MODO LIVRE ── */}
+        <div className="destino-card-purple" onClick={() => setModo('livre')}
+          style={{padding:"20px 16px",textAlign:"center"}}>
+
+          {/* Cantos decorativos */}
+          {[["0","0","borderTop","borderLeft"],["0","auto","borderTop","borderRight"],
+            ["auto","0","borderBottom","borderLeft"],["auto","auto","borderBottom","borderRight"]
+          ].map(([t,r,b1,b2],i)=>(
+            <div key={i} style={{position:"absolute",top:t==="auto"?undefined:6,right:r==="auto"?undefined:6,
+              bottom:t==="auto"?6:undefined,left:r==="auto"?undefined:6,
+              width:12,height:12,
+              borderTop: b1==="borderTop"?"2px solid rgba(155,48,255,.6)":undefined,
+              borderBottom: b1==="borderBottom"?"2px solid rgba(155,48,255,.6)":undefined,
+              borderLeft: b2==="borderLeft"?"2px solid rgba(155,48,255,.6)":undefined,
+              borderRight: b2==="borderRight"?"2px solid rgba(155,48,255,.6)":undefined,
+            }}/>
+          ))}
+
+          {/* Linha de scan */}
+          <div style={{position:"absolute",left:0,right:0,height:2,
+            background:"linear-gradient(90deg,transparent,rgba(155,48,255,.4),transparent)",
+            animation:"destino-scanline 3s linear infinite",animationDelay:"1.5s",pointerEvents:"none"}}/>
+
+          {/* Ícone */}
+          <div className="destino-icon-float-delay" style={{fontSize:38,marginBottom:10,
+            color:"#bf80ff",filter:"drop-shadow(0 0 12px rgba(155,48,255,.8))"}}>
+            🎮
+          </div>
+
+          <div style={{fontFamily:"Orbitron",fontSize:11,fontWeight:900,color:"#bf80ff",
+            letterSpacing:1,marginBottom:6,lineHeight:1.3}}>
+            MODO<br/>LIVRE
+          </div>
+          <div style={{fontSize:11,color:"#9a7acc",lineHeight:1.5,marginBottom:10}}>
+            Acesso total às missões do Acampa Seed
+          </div>
+          <div style={{fontFamily:"Orbitron",fontSize:8,color:"#44006a",marginBottom:12,letterSpacing:1}}>
+            5 PILARES · SEU RITMO
+          </div>
+
+          {/* Pilares mini */}
+          <div style={{display:"flex",justifyContent:"center",gap:4,marginBottom:12}}>
+            {["#7700ff","#00ccff","#ff4400","#ffdd00","#00ff44"].map((c,i) => (
+              <div key={i} style={{width:6,height:6,borderRadius:99,background:c,
+                boxShadow:`0 0 5px ${c}`}}/>
+            ))}
+          </div>
+
+          <div style={{width:"100%",padding:"8px 0",fontFamily:"Orbitron",fontSize:9,
+            fontWeight:700,letterSpacing:1,border:"1px solid rgba(155,48,255,.5)",
+            borderRadius:4,color:"#bf80ff",background:"rgba(155,48,255,.08)",
+            boxShadow:"0 0 10px rgba(155,48,255,.2)"}}>
+            ABRIR MAPA
+          </div>
+        </div>
+      </div>
+
+      {/* ── Versículo base ── */}
+      <div style={{textAlign:"center",padding:"14px 20px",borderRadius:4,
+        background:"rgba(255,255,255,.02)",border:"1px solid rgba(255,255,255,.05)"}}>
+        <div style={{fontSize:12,color:"#7a8aaa",fontStyle:"italic",lineHeight:1.7,marginBottom:4}}>
+          "Prossigo para o alvo, para o prêmio da soberana vocação de Deus em Cristo Jesus."
+        </div>
+        <div style={{fontFamily:"Orbitron",fontSize:8,color:"#ff4dbb",letterSpacing:2}}>
+          FILIPENSES 3:14
+        </div>
+      </div>
+
+    </div>
+  );
+}
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// JORNADA GUIADA — AS 12 CASAS DA MATURIDADE (Sistema das 3 Sagas)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── Configuração das 3 Sagas ──────────────────────────────────────────────────
+const SAGA_CONFIG = {
+  recruta:   { label:"SAGA I — RECRUTA",   casas:[1,2,3,4],   cor:"#00e5ff", corGlow:"rgba(0,229,255,.25)",  icone:"🛡️",  tempo:null, penalidade:"none",    descricao:"Sem cronômetro. Múltipla escolha. Fatos bíblicos diretos." },
+  guerreiro: { label:"SAGA II — GUERREIRO",casas:[5,6,7,8],   cor:"#ffdd00", corGlow:"rgba(255,221,0,.25)",  icone:"⚔️",  tempo:15,   penalidade:"cooldown", descricao:"15 segundos por resposta. Contexto de capítulos." },
+  mestre:    { label:"SAGA III — MESTRE",  casas:[9,10,11,12],cor:"#ff2255", corGlow:"rgba(255,34,85,.3)",   icone:"👑",  tempo:10,   penalidade:"reset",    descricao:"10 segundos. Erro reseta o progresso do dia nesta casa." },
+};
+
+// ── Banco de perguntas completo — 12 Casas ────────────────────────────────────
+const QUIZZES_MATURIDADE = {
+  // ── SAGA I: RECRUTA (Casas 1–4) — Múltipla escolha, sem tempo ──────────────
+  casa1:  { saga:"recruta",   titulo:"Portal do Reino",      xp:200, tempo:null, gigante:false,
+    pergunta:"Segundo Mateus 6:33, o que devemos buscar em primeiro lugar?",
+    opcoes:["Riquezas e Fama","O Reino de Deus e sua justiça","Poder e Autoridade","Segurança Terrena"],
+    correta:1 },
+  casa2:  { saga:"recruta",   titulo:"Portal da Oração",     xp:200, tempo:null, gigante:false,
+    pergunta:"Em Mateus 6:6, onde Jesus instrui que devemos orar em segredo?",
+    opcoes:["No alto do monte","Na praça pública","No seu quarto, com a porta fechada","No templo principal"],
+    correta:2 },
+  casa3:  { saga:"recruta",   titulo:"Portal da Sabedoria",  xp:200, tempo:null, gigante:false,
+    pergunta:"Qual é o princípio da sabedoria, segundo Provérbios 1:7?",
+    opcoes:["Ler muitos livros","O temor do Senhor","Ter muitos anos de vida","Ouvir os mais velhos"],
+    correta:1 },
+  casa4:  { saga:"recruta",   titulo:"⚔️ GIGANTE — Golias",  xp:350, tempo:null, gigante:true,
+    pergunta:"Em 1 Samuel 17, qual foi a confissão de Davi antes de enfrentar Golias?",
+    opcoes:["Eu sou o mais forte de Israel","Tu vens com espada, mas eu vou em nome do Senhor","Confio na minha funda e habilidade","O Deus de Israel me protege de todo mal"],
+    correta:1 },
+
+  // ── SAGA II: GUERREIRO (Casas 5–8) — 15 segundos, bloqueio 5 min no erro ──
+  casa5:  { saga:"guerreiro", titulo:"Portal da Fé",         xp:300, tempo:15,   gigante:false,
+    pergunta:"Segundo Hebreus 11:1, a fé é a certeza do que se espera e a prova do que...",
+    opcoes:["...ainda não se conquistou","...não se pode ver","...está por vir","...Deus prometeu"],
+    correta:1 },
+  casa6:  { saga:"guerreiro", titulo:"Portal do Fruto",      xp:300, tempo:15,   gigante:false,
+    pergunta:"Qual fruto do Espírito (Gálatas 5:22) se opõe diretamente à ira?",
+    opcoes:["Longanimidade","Fé","Alegria","Bondade"],
+    correta:0 },
+  casa7:  { saga:"guerreiro", titulo:"Portal da Palavra",    xp:300, tempo:15,   gigante:false,
+    pergunta:"Em 2 Timóteo 3:16, toda Escritura é inspirada por Deus e útil para...",
+    opcoes:["Pregar sermões longos","O ensino, a repreensão, a correção e a educação na justiça","Ganhar debates teológicos","Provar que a religião é verdadeira"],
+    correta:1 },
+  casa8:  { saga:"guerreiro", titulo:"⚔️ GIGANTE — Isbi-Benobe", xp:500, tempo:15, gigante:true,
+    pergunta:"Em 2 Samuel 21:15-17, quem salvou Davi quando ele estava exausto e prestes a ser morto pelo gigante Isbi-Benobe?",
+    opcoes:["Joabe, seu general","Abisai, filho de Zeruia","O próprio Davi se recuperou","Salomão, seu filho"],
+    correta:1 },
+
+  // ── SAGA III: MESTRE (Casas 9–12) — 10 segundos, erro reseta dia da casa ──
+  casa9:  { saga:"mestre",    titulo:"Portal da Cruz",       xp:450, tempo:10,   gigante:false,
+    pergunta:"Em João 15:13, Jesus diz que o maior amor é aquele que...",
+    opcoes:["Perdoa setenta vezes sete","Ama o próximo como a si mesmo","Dá a vida pelos amigos","Abençoa os que o perseguem"],
+    correta:2 },
+  casa10: { saga:"mestre",    titulo:"Portal da Armadura",   xp:450, tempo:10,   gigante:false,
+    pergunta:"Em Efésios 6:17, qual peça da Armadura de Deus é chamada de 'espada do Espírito'?",
+    opcoes:["O escudo da fé","O elmo da salvação","Os pés calçados com o evangelho","A Palavra de Deus"],
+    correta:3 },
+  casa11: { saga:"mestre",    titulo:"Portal da Graça",      xp:450, tempo:10,   gigante:false,
+    pergunta:"Segundo Efésios 2:8-9, pela graça sois salvos mediante a fé, e isso não vem de vós, mas é...",
+    opcoes:["O resultado das boas obras","Dom de Deus, não por obras","Fruto da obediência à Lei","A recompensa pelos sofrimentos"],
+    correta:1 },
+  casa12: { saga:"mestre",    titulo:"👑 GIGANTE — O Transcendente", xp:700, tempo:10, gigante:true,
+    pergunta:"BATALHA FINAL — Filipenses 3:14: 'Prossigo para o alvo, para o prêmio da soberana vocação de Deus...' Como Paulo descreve esse prêmio?",
+    opcoes:["...que aguarda os perseverantes","...em Cristo Jesus","...que supera todo entendimento","...prometido aos profetas"],
+    correta:1 },
+};
+
+const CASAS_ORDER = ["casa1","casa2","casa3","casa4","casa5","casa6","casa7","casa8","casa9","casa10","casa11","casa12"];
+const BLOQUEIO_GUERREIRO_MS = 5 * 60 * 1000; // 5 minutos em ms
+
+// ── QuizModal — Motor de batalha completo ─────────────────────────────────────
+function QuizModal({ quiz, casaId, casaNum, onVitoria, onDerrota, onUsarMentor, podeUsarMentor }) {
+  const { useState: useS, useEffect: useE, useCallback, useRef } = React;
+  const [tempoRestante, setTempoRestante] = useS(quiz.tempo || 0);
+  const [respondido,   setRespondido]     = useS(false);
+  const [acertou,      setAcertou]        = useS(null);
+  const [salvando,     setSalvando]       = useS(false);
+  const [glitch,       setGlitch]         = useS(false);
+  const [eliminadas,   setEliminadas]     = useS([]); // índices eliminados pelo Mentor
+  const modalRef = useRef(null);
+
+  const encerrar = useCallback((ok) => {
+    if (salvando) return;
+    if (!ok) {
+      // Efeito de glitch apenas no nível Mestre
+      if (quiz.saga === "mestre") {
+        setGlitch(true);
+        setTimeout(() => { setGlitch(false); onDerrota(); }, 700);
+      } else {
+        onDerrota();
+      }
+      return;
+    }
+    setSalvando(true);
+    onVitoria(quiz.xp).finally(() => setSalvando(false));
+  }, [quiz.xp, quiz.saga, onVitoria, onDerrota, salvando]);
+
+  useE(() => {
+    if (!quiz.tempo) return;
+    if (respondido) return;
+    if (tempoRestante <= 0) { encerrar(false); return; }
+    const t = setInterval(() => setTempoRestante(p => p - 1), 1000);
+    return () => clearInterval(t);
+  }, [tempoRestante, respondido, quiz.tempo, encerrar]);
+
+  function responder(idx) {
+    if (respondido || eliminadas.includes(idx)) return;
+    setRespondido(true);
+    const ok = idx === quiz.correta;
+    setAcertou(ok);
+    setTimeout(() => encerrar(ok), 1200);
+  }
+
+  function usarMentor() {
+    // Elimina até 2 opções erradas aleatórias
+    const erradas = quiz.opcoes.map((_,i)=>i).filter(i => i !== quiz.correta && !eliminadas.includes(i));
+    const paraEliminar = erradas.sort(()=>Math.random()-.5).slice(0,1);
+    setEliminadas(prev => [...prev, ...paraEliminar]);
+    onUsarMentor();
+  }
+
+  const temTempo   = quiz.tempo !== null;
+  const pct        = temTempo ? Math.round((tempoRestante / quiz.tempo) * 100) : 100;
+  const emPerigo   = tempoRestante <= 5 && temTempo;
+  const corTempo   = tempoRestante <= 5 ? "#ff2255" : tempoRestante <= 10 ? "#ffdd00" : "#00e5ff";
+  const sagaCfg    = SAGA_CONFIG[quiz.saga];
+
+  // Cores e tema por saga
+  const temaModal = {
+    recruta:   { borda:"rgba(0,229,255,.4)",   fundo:"rgba(0,10,30,.98)",    titulo:"#00e5ff" },
+    guerreiro: { borda:"rgba(255,221,0,.4)",   fundo:"rgba(20,15,0,.98)",    titulo:"#ffdd00" },
+    mestre:    { borda:"rgba(255,34,85,.5)",   fundo:"rgba(30,0,10,.98)",    titulo:"#ff2255" },
+  }[quiz.saga];
+
+  return (
+    <div ref={modalRef}
+      className={glitch ? "glitch-active" : ""}
+      style={{position:"fixed",inset:0,zIndex:9990,
+        background: quiz.saga==="mestre" ? "rgba(20,0,5,.92)" : "rgba(0,0,0,.88)",
+        display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(8px)"}}>
+
+      {/* Efeito de scan no glitch */}
+      {glitch && (
+        <div style={{position:"absolute",inset:0,pointerEvents:"none",overflow:"hidden",zIndex:1}}>
+          <div style={{position:"absolute",left:0,right:0,height:4,
+            background:"linear-gradient(90deg,transparent,#ff2255,transparent)",
+            animation:"glitch-scan .5s linear"}}/>
+        </div>
+      )}
+
+      <div style={{background:temaModal.fundo, border:`1px solid ${temaModal.borda}`,
+        borderRadius:8, padding:"28px 24px", maxWidth:460, width:"100%",
+        boxShadow:`0 0 50px ${sagaCfg.corGlow}, inset 0 0 30px rgba(0,0,0,.3)`,
+        position:"relative", overflow:"hidden"}}>
+
+        {/* Barra decorativa topo */}
+        <div style={{position:"absolute",top:0,left:0,right:0,height:3,
+          background:`linear-gradient(90deg,transparent,${sagaCfg.cor},transparent)`}}/>
+
+        {/* Header */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <div>
+            <div style={{fontFamily:"Orbitron",fontSize:8,color:sagaCfg.cor,letterSpacing:2,marginBottom:4}}>
+              {sagaCfg.icone} {sagaCfg.label} · CASA {casaNum}
+            </div>
+            <div style={{fontFamily:"Orbitron",fontSize:11,fontWeight:700,color:temaModal.titulo,letterSpacing:1}}>
+              {quiz.titulo}
+            </div>
+          </div>
+          <div style={{fontFamily:"Orbitron",fontSize:11,color:"#ffdd00",letterSpacing:1}}>+{quiz.xp} XP</div>
+        </div>
+
+        {/* Barra de tempo — Guerreiro e Mestre */}
+        {temTempo && (
+          <div style={{marginBottom:18}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+              <span style={{fontFamily:"Orbitron",fontSize:8,color:"#6a6a9a",letterSpacing:2}}>AMEAÇA DO GIGANTE</span>
+              <span className={emPerigo?"timer-danger":""}
+                style={{fontFamily:"Orbitron",fontSize:22,fontWeight:900,color:corTempo,
+                  textShadow:`0 0 ${emPerigo?20:10}px ${corTempo}`}}>
+                {tempoRestante}s
+              </span>
+            </div>
+            <div style={{width:"100%",height:8,background:"rgba(255,255,255,.07)",borderRadius:99,overflow:"hidden",
+              border:`1px solid ${corTempo}33`}}>
+              <div style={{height:"100%",width:`${pct}%`,borderRadius:99,transition:"width 1s linear",
+                background:`linear-gradient(90deg,${corTempo}88,${corTempo})`,
+                boxShadow:`0 0 10px ${corTempo}`}}/>
+            </div>
+            {emPerigo && (
+              <div style={{marginTop:5,fontFamily:"Orbitron",fontSize:8,color:"#ff2255",
+                letterSpacing:2,textAlign:"center",animation:"timer-danger .4s infinite"}}>
+                ⚠ CORRA — O GIGANTE SE APROXIMA!
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Penalidade informativa */}
+        {quiz.saga !== "recruta" && !respondido && (
+          <div style={{marginBottom:14,padding:"7px 12px",borderRadius:3,
+            background: quiz.saga==="mestre"?"rgba(255,34,85,.08)":"rgba(255,221,0,.06)",
+            border:`1px solid ${quiz.saga==="mestre"?"rgba(255,34,85,.25)":"rgba(255,221,0,.2)"}`,
+            fontFamily:"Orbitron",fontSize:8,letterSpacing:1,
+            color: quiz.saga==="mestre"?"#ff6090":"#aa9900"}}>
+            {quiz.saga==="mestre"
+              ? "💀 DERROTA: reseta seu progresso do dia nesta casa"
+              : "⏳ DERROTA: bloqueio de 5 minutos para nova tentativa"}
+          </div>
+        )}
+
+        {/* Pergunta */}
+        <p style={{fontSize:15,color:"#e0e0ff",lineHeight:1.65,marginBottom:20,
+          fontFamily:"'Rajdhani',sans-serif",fontWeight:500}}>
+          {quiz.pergunta}
+        </p>
+
+        {/* Opções */}
+        <div style={{display:"flex",flexDirection:"column",gap:9}}>
+          {quiz.opcoes.map((op, i) => {
+            const eliminada = eliminadas.includes(i);
+            let bg = "rgba(255,255,255,.04)"; let bdr = "rgba(0,229,255,.18)"; let txtCor = "#d0d8ff";
+            if (eliminada) { bg="rgba(0,0,0,.2)"; bdr="rgba(255,255,255,.06)"; txtCor="#444466"; }
+            if (respondido) {
+              if (i === quiz.correta) { bg="rgba(0,255,68,.18)"; bdr="rgba(0,255,68,.5)"; txtCor="#00ff44"; }
+              else if (!eliminada) { bg="rgba(255,23,68,.1)"; bdr="rgba(255,23,68,.3)"; txtCor="#ff6090"; }
+            }
+            return (
+              <button key={i}
+                disabled={respondido||eliminada||salvando}
+                onClick={() => responder(i)}
+                style={{padding:"11px 14px",background:bg,border:`1px solid ${bdr}`,
+                  borderRadius:4,color:txtCor,fontSize:14,textAlign:"left",
+                  cursor:(respondido||eliminada)?"default":"pointer",
+                  transition:"all .2s",fontFamily:"'Rajdhani',sans-serif",fontWeight:500,
+                  opacity:eliminada?.35:1,
+                  textDecoration:eliminada?"line-through":"none"}}>
+                <span style={{fontFamily:"Orbitron",fontSize:8,marginRight:10,
+                  color:eliminada?"#333355":"#6a6a9a"}}>{String.fromCharCode(65+i)}</span>
+                {eliminada ? <s style={{opacity:.4}}>{op}</s> : op}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Botão Mentor — só para Recruta */}
+        {quiz.saga === "recruta" && podeUsarMentor && !respondido && eliminadas.length === 0 && (
+          <button className="mentor-glow"
+            onClick={usarMentor}
+            style={{marginTop:16,width:"100%",padding:"9px 0",fontFamily:"Orbitron",fontSize:9,
+              letterSpacing:2,fontWeight:700,border:"1px solid rgba(155,48,255,.5)",
+              background:"rgba(155,48,255,.12)",color:"#bf80ff",borderRadius:3,cursor:"pointer"}}>
+            💡 USAR AJUDA DO MENTOR — Elimina 1 resposta errada
+          </button>
+        )}
+
+        {/* Resultado */}
+        {respondido && (
+          <div style={{marginTop:16,padding:"12px 14px",borderRadius:4,textAlign:"center",
+            background: acertou?"rgba(0,255,68,.1)":"rgba(255,23,68,.1)",
+            border:`1px solid ${acertou?"rgba(0,255,68,.4)":"rgba(255,23,68,.4)"}`,
+            position:"relative"}}>
+            <div className={!acertou && quiz.saga==="mestre" ? "glitch-text" : ""}
+              style={{fontFamily:"Orbitron",fontSize:13,fontWeight:700,
+                color:acertou?"#00ff44":"#ff2255"}}>
+              {acertou ? "🛡️ CRÍTICO! O GIGANTE RECUOU!" : quiz.saga==="mestre" ? "💀 DERROTA TOTAL!" : "💥 O GIGANTE DEFENDEU!"}
+            </div>
+            {!acertou && (
+              <div style={{fontSize:11,color:"#9090bb",marginTop:6}}>
+                {quiz.saga==="mestre" ? "Seu progresso do dia nesta casa foi resetado." : quiz.saga==="guerreiro" ? "Você está bloqueado por 5 minutos." : "Estude e tente novamente."}
+              </div>
+            )}
+            {salvando && <span className="spinner" style={{marginTop:8,display:"block",margin:"8px auto 0"}}/>}
+          </div>
+        )}
+
+        {/* Barra decorativa base */}
+        <div style={{position:"absolute",bottom:0,left:0,right:0,height:2,
+          background:`linear-gradient(90deg,transparent,${sagaCfg.cor},transparent)`}}/>
+      </div>
+    </div>
+  );
+}
+
+// ── JornadaGuiada — Tela principal da trilha ──────────────────────────────────
+function JornadaGuiada({ userId }) {
+  const { useState: useS, useEffect: useE } = React;
+  const [quizAtivo,    setQuizAtivo]  = useS(null);
+  const [progresso,    setProgresso]  = useS(null);   // {casaId: bool}
+  const [bloqueios,    setBloqueios]  = useS({});      // {casaId: timestampMs de desbloqueio}
+  const [resets,       setResets]     = useS({});      // {casaId: dateStr — reseta no dia seguinte}
+  const [carregando,   setCarregando] = useS(true);
+  const [msg,          setMsg]        = useS(null);
+  const [mentorUsado,  setMentorUsado]= useS(false);
+  const [tick,         setTick]       = useS(0); // força re-render p/ atualizar contadores
+
+  const PROG_KEY    = `jornada_prog_${userId}`;
+  const BLOQ_KEY    = `jornada_bloq_${userId}`;
+  const RESET_KEY   = `jornada_reset_${userId}`;
+  const MENTOR_KEY  = `jornada_mentor_${userId}`;
+
+  useE(() => {
+    try {
+      const p = localStorage.getItem(PROG_KEY);
+      const b = localStorage.getItem(BLOQ_KEY);
+      const r = localStorage.getItem(RESET_KEY);
+      const m = localStorage.getItem(MENTOR_KEY);
+      setProgresso(p ? JSON.parse(p) : {});
+      setBloqueios(b ? JSON.parse(b) : {});
+      setResets(r ? JSON.parse(r) : {});
+      setMentorUsado(m === todayStr());
+    } catch(e) {
+      setProgresso({}); setBloqueios({}); setResets({});
+    }
+    setCarregando(false);
+    // Atualiza a cada segundo p/ decrementar cooldowns em tempo real
+    const t = setInterval(() => setTick(v=>v+1), 1000);
+    return () => clearInterval(t);
+  }, [userId]);
+
+  function salvar(prog, bloq, res) {
+    try {
+      if (prog  !== undefined) { localStorage.setItem(PROG_KEY,   JSON.stringify(prog));  setProgresso(prog); }
+      if (bloq  !== undefined) { localStorage.setItem(BLOQ_KEY,   JSON.stringify(bloq));  setBloqueios(bloq); }
+      if (res   !== undefined) { localStorage.setItem(RESET_KEY,  JSON.stringify(res));   setResets(res); }
+    } catch(e) {}
+  }
+
+  // Retorna ms restantes de bloqueio (0 = livre)
+  function getBloqueioRestante(casaId) {
+    const ts = bloqueios[casaId];
+    if (!ts) return 0;
+    return Math.max(0, ts - Date.now());
+  }
+
+  // Verifica se a casa foi resetada hoje (penalidade Mestre)
+  function foiResetadaHoje(casaId) {
+    return resets[casaId] === todayStr();
+  }
+
+  async function onVitoria(xp) {
+    const casaId = quizAtivo.casaId;
+    const novoProgresso = { ...progresso, [casaId]: true };
+    // Limpa bloqueio e reset ao conquistar
+    const novoBloq = { ...bloqueios }; delete novoBloq[casaId];
+    const novoReset = { ...resets };   delete novoReset[casaId];
+    salvar(novoProgresso, novoBloq, novoReset);
+
+    try {
+      const u = store.users.find(u => u.id === userId);
+      if (u) {
+        const today = todayStr();
+        const dailyPoints = { ...(u.dailyPoints||{}), [today]: ((u.dailyPoints||{})[today]||0) + xp };
+        const _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        await _sb.rpc('increment_points', { player_id: userId, row_points: xp });
+        await fbPatch(`users/${userId}`, { dailyPoints });
+        store.users = store.users.map(uu => uu.id===userId ? { ...uu, points: (uu.points||0)+xp, dailyPoints } : uu);
+        await registrarHistorico(userId, "aprovacao", xp, `Jornada — ${QUIZZES_MATURIDADE[casaId].titulo}`, u.points);
+        notify();
+      }
+    } catch(e) { console.error("[Jornada] Erro ao creditar XP:", e); }
+
+    setQuizAtivo(null);
+    setMsg({ tipo:"ok", texto:`🛡️ CASA CONQUISTADA! +${xp} XP creditados.` });
+    setTimeout(() => setMsg(null), 5000);
+  }
+
+  function onDerrota() {
+    const casaId = quizAtivo.casaId;
+    const saga   = quizAtivo.quiz.saga;
+
+    if (saga === "guerreiro") {
+      // Bloqueio de 5 minutos
+      const novoBloq = { ...bloqueios, [casaId]: Date.now() + BLOQUEIO_GUERREIRO_MS };
+      salvar(undefined, novoBloq, undefined);
+      setMsg({ tipo:"erro", texto:"⏳ BLOQUEADO! O Gigante está em guarda. Aguarde 5 minutos." });
+    } else if (saga === "mestre") {
+      // Reseta progresso do dia nesta casa
+      const novoReset = { ...resets, [casaId]: todayStr() };
+      salvar(undefined, undefined, novoReset);
+      setMsg({ tipo:"erro", texto:"💀 DERROTA TOTAL! O Gigante destruiu sua tentativa de hoje. Volte amanhã." });
+    } else {
+      setMsg({ tipo:"erro", texto:"💥 O Gigante recuou por ora! Estude e tente novamente." });
+    }
+
+    setQuizAtivo(null);
+    setTimeout(() => setMsg(null), 6000);
+  }
+
+  function onUsarMentor() {
+    try { localStorage.setItem(MENTOR_KEY, todayStr()); } catch(e) {}
+    setMentorUsado(true);
+  }
+
+  function abrirQuiz(casaId) {
+    setMentorUsado(!!localStorage.getItem(MENTOR_KEY) && localStorage.getItem(MENTOR_KEY) === todayStr());
+    setQuizAtivo({ casaId, quiz: QUIZZES_MATURIDADE[casaId] });
+  }
+
+  if (carregando) return <div style={{textAlign:"center",padding:40}}><span className="spinner" style={{width:28,height:28}}/></div>;
+
+  const totalConcluidas = Object.values(progresso||{}).filter(Boolean).length;
+  const totalCasas = CASAS_ORDER.length;
+
+  return (
+    <div>
+      {quizAtivo && (
+        <QuizModal
+          quiz={quizAtivo.quiz}
+          casaId={quizAtivo.casaId}
+          casaNum={CASAS_ORDER.indexOf(quizAtivo.casaId) + 1}
+          onVitoria={onVitoria}
+          onDerrota={onDerrota}
+          onUsarMentor={onUsarMentor}
+          podeUsarMentor={!mentorUsado && quizAtivo.quiz.saga === "recruta"}
+        />
+      )}
+
+      {/* ── Cabeçalho Hero ── */}
+      <div style={{marginBottom:24,padding:"20px 24px",borderRadius:6,
+        background:"linear-gradient(135deg,rgba(0,229,255,.05),rgba(155,48,255,.05))",
+        border:"1px solid rgba(0,229,255,.2)",position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",top:0,left:0,right:0,height:2,
+          background:"linear-gradient(90deg,#7700ff,#00e5ff,#ffd700)"}}/>
+        <div style={{fontFamily:"Orbitron",fontSize:14,fontWeight:900,
+          background:"linear-gradient(135deg,#00e5ff,#ffd700)",
+          WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",
+          letterSpacing:2,marginBottom:6}}>
+          🗺️ AS 12 CASAS DA MATURIDADE
+        </div>
+        <div style={{fontSize:13,color:"#9090bb",lineHeight:1.6,marginBottom:14}}>
+          Suba a montanha da maturidade espiritual. Cada Saga exige mais foco, conhecimento e coragem. Os Gigantes testam os dignos.
+        </div>
+        <div style={{display:"flex",gap:20,flexWrap:"wrap",marginBottom:12}}>
+          {Object.entries(SAGA_CONFIG).map(([key,s]) => (
+            <div key={key} style={{display:"flex",alignItems:"center",gap:6}}>
+              <span style={{fontSize:12}}>{s.icone}</span>
+              <span style={{fontFamily:"Orbitron",fontSize:8,color:s.cor,letterSpacing:1}}>{s.label.split("—")[1].trim()}</span>
+              <span style={{fontFamily:"Orbitron",fontSize:8,color:"#444466"}}>·</span>
+              <span style={{fontFamily:"Orbitron",fontSize:8,color:"#6a6a9a"}}>{s.tempo ? `${s.tempo}s` : "livre"}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{fontFamily:"Orbitron",fontSize:9,color:"#6a6a9a",letterSpacing:1,marginBottom:8}}>
+          PROGRESSO TOTAL: {totalConcluidas} / {totalCasas} CASAS
+        </div>
+        <div style={{width:"100%",height:8,background:"rgba(255,255,255,.06)",borderRadius:99,overflow:"hidden",border:"1px solid rgba(255,255,255,.04)"}}>
+          <div style={{height:"100%",width:`${Math.round((totalConcluidas/totalCasas)*100)}%`,
+            background:"linear-gradient(90deg,#7700ff,#00bcd4,#ffd700)",
+            borderRadius:99,transition:"width .6s ease",boxShadow:"0 0 8px rgba(0,229,255,.4)"}}/>
+        </div>
+      </div>
+
+      {/* ── Mensagem de feedback ── */}
+      {msg && (
+        <div style={{marginBottom:16,padding:"12px 16px",borderRadius:4,
+          background: msg.tipo==="ok"?"rgba(0,255,68,.1)":"rgba(255,23,68,.1)",
+          border:`1px solid ${msg.tipo==="ok"?"rgba(0,255,68,.35)":"rgba(255,23,68,.35)"}`,
+          fontFamily:"Orbitron",fontSize:11,
+          color: msg.tipo==="ok"?"#00ff44":"#ff6090"}}>
+          {msg.texto}
+        </div>
+      )}
+
+      {/* ── Sagas e Casas ── */}
+      {Object.entries(SAGA_CONFIG).map(([sagaKey, saga]) => {
+        const casasDaSaga = CASAS_ORDER.filter(id => QUIZZES_MATURIDADE[id].saga === sagaKey);
+        const sagaConq    = casasDaSaga.filter(id => progresso[id]).length;
+        const sagaTotal   = casasDaSaga.length;
+        const sagaConcluida = sagaConq === sagaTotal;
+
+        return (
+          <div key={sagaKey} style={{marginBottom:28}}>
+            {/* Cabeçalho da Saga */}
+            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,padding:"10px 16px",
+              borderRadius:4,background:`${saga.cor}08`,border:`1px solid ${saga.cor}33`}}>
+              <span style={{fontSize:18}}>{saga.icone}</span>
+              <div style={{flex:1}}>
+                <div style={{fontFamily:"Orbitron",fontSize:11,fontWeight:700,color:saga.cor,letterSpacing:2}}>
+                  {saga.label}
+                </div>
+                <div style={{fontSize:11,color:"#6a6a9a",marginTop:2}}>{saga.descricao}</div>
+              </div>
+              <div style={{fontFamily:"Orbitron",fontSize:10,color:sagaConcluida?"#00ff44":saga.cor}}>
+                {sagaConcluida ? "✓ CONCLUÍDA" : `${sagaConq}/${sagaTotal}`}
+              </div>
+            </div>
+
+            {/* Trilha das casas da saga */}
+            <div style={{position:"relative",borderLeft:`2px solid ${saga.cor}22`,
+              marginLeft:16,paddingLeft:28,display:"flex",flexDirection:"column",gap:14}}>
+
+              {casasDaSaga.map((casaId) => {
+                const casa       = QUIZZES_MATURIDADE[casaId];
+                const idxGlobal  = CASAS_ORDER.indexOf(casaId);
+                const concluida  = !!progresso[casaId];
+                const anteriorOk = idxGlobal === 0 || !!progresso[CASAS_ORDER[idxGlobal - 1]];
+                const bloqMs     = getBloqueioRestante(casaId);
+                const resetHoje  = foiResetadaHoje(casaId);
+                const bloqueada  = !anteriorOk;
+                const emCooldown = bloqMs > 0;
+                const liberada   = anteriorOk && !concluida && !emCooldown && !resetHoje;
+                const minRest    = Math.ceil(bloqMs / 60000);
+                const secRest    = Math.ceil((bloqMs % 60000) / 1000);
+                const corBorda   = concluida ? saga.cor : casa.gigante && liberada ? "#ff2255" : `${saga.cor}33`;
+
+                return (
+                  <div key={casaId} style={{position:"relative",opacity:bloqueada?.3:1,transition:"opacity .3s"}}>
+                    {/* Bolinha */}
+                    <div style={{position:"absolute",left:-41,top:14,width:22,height:22,
+                      borderRadius:"50%",
+                      border:`2px solid ${concluida?saga.cor:casa.gigante&&liberada?"#ff2255":`${saga.cor}44`}`,
+                      background: concluida?`${saga.cor}22`:"rgba(13,10,46,1)",
+                      display:"flex",alignItems:"center",justifyContent:"center",
+                      boxShadow:concluida?`0 0 12px ${saga.cor}66`:casa.gigante&&liberada?"0 0 10px rgba(255,34,85,.5)":"none"}}>
+                      <span style={{fontSize:10}}>
+                        {concluida?"✓":casa.gigante?"⚔":emCooldown?"⏳":resetHoje?"💀":"◈"}
+                      </span>
+                    </div>
+
+                    <div style={{padding:"14px 18px",borderRadius:4,border:`1px solid ${corBorda}`,
+                      background: concluida?`${saga.cor}07`:casa.gigante&&liberada?"rgba(255,34,85,.04)":"rgba(255,255,255,.02)"}}>
+
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:casa.gigante&&liberada?8:4}}>
+                        <div>
+                          <div style={{fontFamily:"Orbitron",fontSize:8,color:"#6a6a9a",letterSpacing:2,marginBottom:3}}>
+                            CASA {idxGlobal+1} · {sagaKey.toUpperCase()}{casa.gigante?" · GIGANTE":""}
+                          </div>
+                          <div style={{fontFamily:"Orbitron",fontSize:12,fontWeight:700,
+                            color:concluida?saga.cor:casa.gigante?"#ff4444":"#e0e0ff"}}>
+                            {casa.titulo}
+                          </div>
+                        </div>
+                        <div style={{fontFamily:"Orbitron",fontSize:10,color:"#ffdd00",flexShrink:0}}>+{casa.xp} XP</div>
+                      </div>
+
+                      {/* Aviso de cronômetro */}
+                      {casa.tempo && liberada && (
+                        <div style={{marginBottom:8,fontSize:11,color:"#cc8800",
+                          borderLeft:`2px solid ${saga.cor}`,paddingLeft:8}}>
+                          ⏱ Você terá apenas {casa.tempo}s para responder
+                        </div>
+                      )}
+
+                      {/* Estados */}
+                      {concluida && (
+                        <div style={{fontFamily:"Orbitron",fontSize:8,color:saga.cor,letterSpacing:2}}>
+                          🛡️ CASA CONQUISTADA
+                        </div>
+                      )}
+                      {bloqueada && (
+                        <div style={{fontFamily:"Orbitron",fontSize:8,color:"#444466",letterSpacing:1}}>
+                          🔒 CONQUISTE A CASA ANTERIOR
+                        </div>
+                      )}
+                      {emCooldown && (
+                        <div style={{fontFamily:"Orbitron",fontSize:9,color:"#cc8800",letterSpacing:1}}>
+                          ⏳ BLOQUEADO — {minRest}m {secRest}s para nova tentativa
+                        </div>
+                      )}
+                      {resetHoje && (
+                        <div style={{fontFamily:"Orbitron",fontSize:9,color:"#ff6090",letterSpacing:1}}>
+                          💀 DERROTADO HOJE — Volte amanhã para tentar novamente
+                        </div>
+                      )}
+                      {liberada && (
+                        <button onClick={() => abrirQuiz(casaId)}
+                          style={{fontFamily:"Orbitron",fontSize:10,letterSpacing:1,fontWeight:700,
+                            padding:"10px 0",border:"none",borderRadius:3,cursor:"pointer",width:"100%",marginTop:6,
+                            background: casa.gigante
+                              ? "linear-gradient(135deg,#880000,#cc0000,#880000)"
+                              : `linear-gradient(135deg,${saga.cor}88,${saga.cor})`,
+                            color: sagaKey==="guerreiro"?"#000":"#fff",
+                            boxShadow: casa.gigante?"0 0 20px rgba(255,34,85,.4)":`0 0 12px ${saga.cor}44`}}>
+                          {casa.gigante ? "⚔️ ENFRENTAR O GIGANTE" : "▶ ENFRENTAR DESAFIO"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* ── Legenda das penalidades ── */}
+      <div style={{marginTop:8,padding:"14px 18px",borderRadius:4,
+        background:"rgba(255,255,255,.02)",border:"1px solid rgba(255,255,255,.06)"}}>
+        <div style={{fontFamily:"Orbitron",fontSize:8,color:"#6a6a9a",letterSpacing:2,marginBottom:10}}>
+          ◈ SISTEMA DE PENALIDADES
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          {[
+            {cor:"#00e5ff",icone:"🛡️",saga:"RECRUTA",desc:"Sem penalidade — tente quantas vezes quiser. Mentor disponível 1x/dia."},
+            {cor:"#ffdd00",icone:"⚔️",saga:"GUERREIRO",desc:"Erro = bloqueio de 5 minutos nesta casa."},
+            {cor:"#ff2255",icone:"👑",saga:"MESTRE",desc:"Erro = progresso do dia resetado. Tente novamente amanhã."},
+          ].map(r => (
+            <div key={r.saga} style={{display:"flex",gap:10,alignItems:"flex-start"}}>
+              <span style={{fontSize:12,flexShrink:0}}>{r.icone}</span>
+              <div>
+                <span style={{fontFamily:"Orbitron",fontSize:8,color:r.cor,letterSpacing:1}}>{r.saga}: </span>
+                <span style={{fontSize:12,color:"#7a7a9a"}}>{r.desc}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── MissionList — componente separado com filtragem memoizada ────────────────
+// Recalcula `filtered` apenas quando os filtros ou os dados realmente mudam,
+// evitando re-processamento desnecessário a cada re-render do pai.
+function MissionList({ missions, submissions, user, onSubmit, filterPilar, filterStatus, pilarColors }) {
+  const { useMemo } = React;
+
+  const filtered = useMemo(() => {
+    return missions.filter(m => {
+      if (!m || !m.id) return false;
+      if (filterPilar !== "TODOS" && m.category !== filterPilar) return false;
+      if (filterStatus === "FEITAS") {
+        // CRITÉRIO: Missão está bloqueada (cooldown) OU já foi aprovada alguma vez
+        const isLocked = isMissionLocked(user.id, m.id);
+        const isApproved = submissions.some(s => s.userId === user.id && s.missionId === m.id && s.status === "approved");
+        return isLocked || isApproved;
+      }
+      if (filterStatus === "PENDENTES") {
+        return submissions.some(s => s.userId === user.id && s.missionId === m.id && s.status === "pending");
+      }
+      return true;
+    });
+  }, [missions, submissions, user.id, filterPilar, filterStatus]);
+
+  return (
+    <div>
+      {/* Contador */}
+      <div style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", letterSpacing:1, marginBottom:16}}>
+        {filtered.length} missão{filtered.length !== 1 ? "ões" : ""} encontrada{filtered.length !== 1 ? "s" : ""}
+        {filterPilar !== "TODOS" && <span style={{color: pilarColors[filterPilar]}}> · {filterPilar}</span>}
+        {filterStatus !== "TODAS" && <span style={{color:"#ffd700"}}> · {filterStatus}</span>}
+      </div>
+
+      {filtered.length === 0 ? (
+        <div style={{textAlign:"center", color:"#6a6a9a", padding:40}}>
+          <div style={{fontFamily:"Orbitron", fontSize:24, marginBottom:8}}>◈</div>
+          Nenhuma missão encontrada para este filtro.
+        </div>
+      ) : (
+        <div className="missions-grid">
+          {filtered.map((m, i) => (
+            <div key={m.id} style={{animationDelay:`${i * .05}s`}}>
+              <MissionCard mission={m} user={user} onSubmit={onSubmit} isAdmin={false} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+function UserDashboard({ user, onUpdate }) {
+  const [tab, setTab] = useState("missions");
+  const [storeData, setStoreData] = useState(getStore());
+  const [demotionAlert, setDemotionAlert] = useState(null);
+  const [bonusAlert, setBonusAlert] = useState(null);
+  useEffect(() => {
+    checkLoginBonus(user.id).then(result => {
+      if (result) setBonusAlert(result);
+    });
+    checkDemotion(user.id).then(result => {
+      if (result?.demoted) setDemotionAlert(result);
+    });
+    // Verificação silenciosa de divergência — 1x/dia, só alerta o admin, não altera pontos
+    verificarDivergenciaPontos(user.id);
+    return subscribe(s => setStoreData(s));
+  }, []);
+  const currentUser   = (storeData.users.find(u => u && u.id === user.id)) || user || {};
+  const mySubmissions = storeData.submissions.filter(s => s.userId === user.id);
+  const lvl = getEffectiveLevelInfo(currentUser.id) || getLevelInfo(currentUser.points);
+  const dailyGoal = LEVEL_DAILY_GOAL[lvl.name] || 0;
+  const todayPts  = currentUser.dailyPoints?.[todayStr()] || 0;
+  const missedDays = currentUser.missedDays || 0;
+  const countdown = useCountdown();
+  const streakDias = currentUser.streakDays || 0;
+  const metaCumprida = todayPts >= dailyGoal && dailyGoal > 0;
+  const emPerigo = missedDays >= 1 && !metaCumprida && dailyGoal > 0;
+  const streakRecord = currentUser.streakRecord || 0;
+  const fase = getStreakFase(streakDias, emPerigo);
+  const proximoMarco = STREAK_MARCOS.find(m => m.dias > streakDias);
+  const diasParaMarco = proximoMarco ? proximoMarco.dias - streakDias : null;
+
+  return (
+    <div>
+      {bonusAlert && (() => {
+        const isMilestone = !!bonusAlert.marco;
+        const mColors = {
+          "Guerreiro da Semana":  { color:"#ffd700", glow:"rgba(255,215,0,.2)",  btn:"linear-gradient(135deg,#ffd700,#cc8800)", btnColor:"#000", icon:"🔥" },
+          "Sentinela Fiel":       { color:"#00e5ff", glow:"rgba(0,229,255,.2)",  btn:"linear-gradient(135deg,#00bcd4,#0077aa)", btnColor:"#fff", icon:"⚔️" },
+          "Paladino Inabalável":  { color:"#c800ff", glow:"rgba(200,0,255,.2)",  btn:"linear-gradient(135deg,#c800ff,#7700cc)", btnColor:"#fff", icon:"👑" },
+          "Lendário do Reino":    { color:"#ffd700", glow:"rgba(255,215,0,.3)",  btn:"linear-gradient(135deg,#ffd700,#c800ff)", btnColor:"#fff", icon:"🏆" },
+        };
+        const mc = isMilestone ? (mColors[bonusAlert.marco.titulo] || mColors["Guerreiro da Semana"]) : null;
+        const borderColor = isMilestone ? mc.color : "#00e5ff";
+        const glowColor   = isMilestone ? mc.glow  : "rgba(0,229,255,.15)";
+        const btnBg       = isMilestone ? mc.btn   : "linear-gradient(135deg,#00bcd4,#0077aa)";
+        const btnColor    = isMilestone ? mc.btnColor : "#fff";
+        const icon        = isMilestone ? mc.icon  : "⚡";
+        return (
+          <div style={{position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,.75)",display:"flex",alignItems:"center",justifyContent:"center",padding:24,backdropFilter:"blur(4px)"}}>
+            <div style={{background:"rgba(13,10,46,.97)",border:`1px solid ${borderColor}44`,borderRadius:8,padding:"36px 28px",maxWidth:340,width:"100%",position:"relative",overflow:"hidden",boxShadow:`0 0 60px ${glowColor},inset 0 0 40px rgba(0,0,0,.3)`}}>
+              {/* Barra topo */}
+              <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${borderColor},transparent)`}} />
+              {/* Partículas */}
+              {[["8%","20%"],["92%","60%"],["15%","80%"],["85%","30%"],["50%","10%"]].map(([l,t],i) => (
+                <div key={i} style={{position:"absolute",left:l,top:t,width:3,height:3,borderRadius:"50%",background:i%2===0?borderColor:"#9b30ff",opacity:.7}} />
+              ))}
+              {/* Ícone */}
+              <div style={{fontSize:52,textAlign:"center",marginBottom:12}}>{icon}</div>
+              {/* Label */}
+              <div style={{fontFamily:"Orbitron,monospace",fontSize:9,letterSpacing:3,color:borderColor,textAlign:"center",marginBottom:8}}>
+                {isMilestone ? "SEQUÊNCIA CONQUISTADA" : "BÔNUS DE LOGIN"}
+              </div>
+              {/* Título */}
+              <div style={{fontFamily:"Orbitron,monospace",fontWeight:900,fontSize:18,textAlign:"center",lineHeight:1.2,marginBottom:16,
+                background:isMilestone?`linear-gradient(135deg,${mc.color},#fff)`:"linear-gradient(135deg,#00e5ff,#9b30ff)",
+                WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>
+                {isMilestone ? bonusAlert.marco.titulo.toUpperCase() : "BEM-VINDO DE VOLTA, GUERREIRO!"}
+              </div>
+              {/* Badge marco */}
+              {isMilestone && (
+                <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,background:`${mc.color}15`,border:`1px solid ${mc.color}44`,borderRadius:20,padding:"4px 16px",fontFamily:"Orbitron,monospace",fontSize:10,letterSpacing:1,color:mc.color,margin:"0 auto 16px",width:"fit-content"}}>
+                  {icon} {bonusAlert.marco.dias} DIAS CONSECUTIVOS
+                </div>
+              )}
+              {/* Pontos */}
+              <div style={{fontFamily:"Orbitron,monospace",fontWeight:900,fontSize:52,textAlign:"center",lineHeight:1,color:borderColor,marginBottom:4}}>+{bonusAlert.bonus}</div>
+              <div style={{fontFamily:"Orbitron,monospace",fontSize:10,letterSpacing:3,color:"#6a6a9a",textAlign:"center",marginBottom:isMilestone?4:16}}>PONTOS CREDITADOS</div>
+              {isMilestone && (
+                <div style={{fontFamily:"Orbitron,monospace",fontSize:9,color:"#6a6a9a",textAlign:"center",marginBottom:16}}>
+                  Login +50 · Sequência +{bonusAlert.marco.bonus}
+                </div>
+              )}
+              {/* Descrição */}
+              <div style={{fontFamily:"Rajdhani,sans-serif",fontSize:14,textAlign:"center",color:"#a0a0cc",lineHeight:1.5,marginBottom:20,borderTop:"1px solid rgba(255,255,255,.06)",paddingTop:16}}>
+                {isMilestone
+                  ? `${bonusAlert.marco.dias} dias de fidelidade inabalável! Sua dedicação está transformando sua jornada espiritual.`
+                  : "Você acessou o app hoje. Continue firme na sua missão!"}
+              </div>
+              {/* Fase e versículo */}
+              <div style={{fontSize:11,color:"#7a9abb",fontStyle:"italic",textAlign:"center",marginBottom:4}}>
+                {fase.icon} {fase.fase}
+              </div>
+              <div style={{fontSize:11,color:"#7a9abb",fontStyle:"italic",textAlign:"center",marginBottom:4}}>
+                "{fase.versiculo}"
+              </div>
+              <div style={{fontSize:10,color:"#5a6a8a",textAlign:"center",marginBottom:20}}>
+                — {fase.ref}
+              </div>
+              {/* Streak */}
+              <div style={{fontFamily:"Orbitron,monospace",fontSize:9,color:"#6a6a9a",textAlign:"center",marginBottom:20}}>
+                🔥 SEQUÊNCIA ATUAL: {bonusAlert.streak} {bonusAlert.streak===1?"DIA":"DIAS"}
+                {streakRecord > bonusAlert.streak && ` · RECORDE: ${streakRecord}`}
+              </div>
+              {/* Botão */}
+              <button onClick={() => setBonusAlert(null)} style={{width:"100%",fontFamily:"Orbitron,monospace",fontSize:11,letterSpacing:2,fontWeight:700,padding:14,border:"none",borderRadius:4,cursor:"pointer",textTransform:"uppercase",background:btnBg,color:btnColor}}>
+                {isMilestone ? "RECEBER RECOMPENSA" : "CONTINUAR A JORNADA"}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+      {demotionAlert && (
+        <div style={{marginBottom:16, padding:"14px 18px", background:"#ff225511", border:"1px solid #ff225544", borderRadius:4}}>
+          <div style={{fontFamily:"Orbitron", fontSize:12, color:"#ff2255", marginBottom:4}}>REBAIXAMENTO</div>
+          <div style={{fontSize:14, color:"#ff9999"}}>Voce ficou 2 dias sem cumprir a meta e foi rebaixado para {demotionAlert.prevLevel}.</div>
+          <button style={{marginTop:8, background:"none", border:"none", color:"#ff2255", fontFamily:"Orbitron", fontSize:10, cursor:"pointer"}} onClick={() => setDemotionAlert(null)}>FECHAR</button>
+        </div>
+      )}
+      {/* ── StreakBar — layout aprovado ── */}
+      <div style={{
+        marginBottom:12, padding:"14px 18px",
+        background: emPerigo ? "rgba(255,140,0,.06)" : streakDias>=3 ? "rgba(255,215,0,.04)" : "rgba(0,229,255,.03)",
+        border: `1px solid ${emPerigo ? "rgba(255,140,0,.3)" : streakDias>=3 ? "rgba(255,215,0,.2)" : "rgba(0,229,255,.15)"}`,
+        borderRadius:4, position:"relative", overflow:"hidden"
+      }}>
+
+        {/* 1. TOPO — Fase bíblica */}
+        <div style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:14,padding:"10px 12px",background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)",borderRadius:4}}>
+          <span style={{fontSize:20,lineHeight:1,marginTop:2}}>{fase.icon}</span>
+          <div>
+            <div style={{fontFamily:"Orbitron",fontSize:9,color:emPerigo?"#ff9900":"#8a7a40",letterSpacing:2,marginBottom:3}}>{fase.fase.toUpperCase()}</div>
+            <div style={{fontSize:12,color:"#7a8aaa",fontStyle:"italic",lineHeight:1.5}}>"{fase.versiculo}"</div>
+            <div style={{fontSize:10,color:"#5a6a8a",marginTop:3}}>– {fase.ref}</div>
+          </div>
+        </div>
+
+        {/* 2. MEIO — Sequência + Meta */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8,marginBottom:14}}>
+          {/* Streak */}
+          <div>
+            <div style={{fontFamily:"Orbitron",fontSize:9,color:"#6a6a9a",letterSpacing:2,marginBottom:6}}>SEQUÊNCIA DE DIAS</div>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:22}}>{fase.icon}</span>
+              <div>
+                <span style={{fontFamily:"Orbitron",fontWeight:900,fontSize:26,color:emPerigo?"#ff9900":streakDias>0?"#ffd700":"#6a6a9a"}}>{streakDias}</span>
+                <span style={{fontFamily:"Orbitron",fontSize:10,color:"#6a6a9a",marginLeft:6}}>{streakDias===1?"DIA":"DIAS"}</span>
+              </div>
+            </div>
+            {streakRecord > 0 && <div style={{fontFamily:"Orbitron",fontSize:9,color:"#6a6a9a",marginTop:4}}>🏆 RECORDE: {streakRecord} {streakRecord===1?"DIA":"DIAS"}</div>}
+          </div>
+          {/* Meta */}
+          {dailyGoal > 0 && (
+            <div style={{textAlign:"right"}}>
+              <div style={{fontFamily:"Orbitron",fontSize:9,color:"#6a6a9a",letterSpacing:2,marginBottom:6}}>META DIÁRIA</div>
+              <div style={{fontFamily:"Orbitron",fontSize:13,color:metaCumprida?"#00ff44":emPerigo?"#ff9900":"#ffdd00"}}>
+                {todayPts} / {dailyGoal} PTS{metaCumprida&&<span style={{fontSize:10}}> ✓</span>}
+              </div>
+              {!metaCumprida && <div style={{fontFamily:"Orbitron",fontSize:10,color:"#ff4dbb",marginTop:4}}>⏱ {countdown} para encerrar</div>}
+            </div>
+          )}
+        </div>
+
+        {/* 3. PRÓXIMO MARCO */}
+        {proximoMarco && (
+          <div style={{background:"rgba(255,215,0,.06)",border:"1px solid rgba(255,215,0,.15)",borderRadius:4,padding:"8px 12px",marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+            <div style={{fontFamily:"Orbitron",fontSize:9,color:"#6a6a9a",letterSpacing:1}}>PRÓXIMO MARCO</div>
+            <div style={{fontFamily:"Orbitron",fontSize:10,color:"#ffd700"}}>🔥 {proximoMarco.dias} DIAS → +{proximoMarco.bonus} PTS</div>
+            <div style={{fontFamily:"Orbitron",fontSize:10,color:"#6a6a9a"}}>{diasParaMarco} {diasParaMarco===1?"DIA":"DIAS"}</div>
+          </div>
+        )}
+
+        {/* 4. ÚLTIMOS 7 DIAS */}
+        <div>
+          <div style={{fontFamily:"Orbitron",fontSize:9,color:"#6a6a9a",letterSpacing:2,marginBottom:8}}>ÚLTIMOS 7 DIAS</div>
+          <div style={{display:"flex",gap:6,alignItems:"flex-end"}}>
+            {Array.from({length:7}).map((_,i) => {
+              const d = nowBRT(); d.setDate(d.getDate()-(6-i));
+              const dStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+              const pts = currentUser.dailyPoints?.[dStr] || 0;
+              const isToday = dStr === todayStr();
+              const status = pts >= dailyGoal && dailyGoal > 0 ? "done" : pts > 0 ? "partial" : "empty";
+              const bg = status==="done" ? "linear-gradient(180deg,#00ff44,#00aa33)" : status==="partial" ? "linear-gradient(180deg,#ffd700,#cc8800)" : "rgba(255,255,255,.06)";
+              const border = status==="done" ? "#00ff4466" : status==="partial" ? "#ffd70066" : "rgba(255,255,255,.1)";
+              const height = status==="done" ? 32 : status==="partial" ? 20 : 12;
+              const dayNames = ["D","S","T","Q","Q","S","S"];
+              return (
+                <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                  <div style={{width:"100%",height:height,background:bg,border:`1px solid ${border}`,borderRadius:3,transition:"height .4s ease",boxShadow:status==="done"?"0 0 8px #00ff4433":status==="partial"?"0 0 8px #ffd70033":"none",position:"relative"}}>
+                    {isToday && <div style={{position:"absolute",top:-7,left:"50%",transform:"translateX(-50%)",width:5,height:5,borderRadius:"50%",background:metaCumprida?"#00ff44":"#ff4dbb",boxShadow:`0 0 6px ${metaCumprida?"#00ff44":"#ff4dbb"}`}} />}
+                  </div>
+                  <div style={{fontFamily:"Orbitron",fontSize:8,color:isToday?"#00e5ff":"#6a6a9a",fontWeight:isToday?700:400}}>{dayNames[d.getDay()]}</div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{display:"flex",gap:12,marginTop:8}}>
+            {[["#00ff44","META CUMPRIDA"],["#ffd700","PARCIAL"],["rgba(255,255,255,.2)","SEM ATIVIDADE"]].map(([c,l]) => (
+              <div key={l} style={{display:"flex",alignItems:"center",gap:4}}>
+                <div style={{width:8,height:8,borderRadius:2,background:c}} />
+                <span style={{fontFamily:"Orbitron",fontSize:7,color:"#6a6a9a",letterSpacing:1}}>{l}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 5. RODAPÉ — Mensagem motivacional em laranja (sem vermelho) */}
+        <div style={{marginTop:12,fontFamily:"Orbitron",fontSize:9,letterSpacing:1,textAlign:"center",color:emPerigo?"#ff9900":streakDias>=7?"#ffd700":streakDias>=3?"#ffd700":"#6a6a9a"}}>
+          {emPerigo && `⚠️ ${STREAK_FASE_PERIGO.versiculo} — ${STREAK_FASE_PERIGO.ref}`}
+          {!emPerigo && streakDias===0 && "ACESSE TODOS OS DIAS PARA INICIAR SUA SEQUÊNCIA"}
+          {!emPerigo && streakDias>=1 && streakDias<3 && "🔥 NÃO QUEBRE SUA SEQUÊNCIA!"}
+          {!emPerigo && streakDias>=3 && streakDias<7 && `⚡ ${streakDias} DIAS EM SEQUÊNCIA — VOCÊ ESTÁ EM CHAMAS!`}
+          {!emPerigo && streakDias>=7 && `👑 ${streakDias} DIAS CONSECUTIVOS — LENDÁRIO!`}
+        </div>
+      </div>
+      <div style={{marginBottom:16}}><LevelBar user={currentUser} /></div>
+      <ArchetypeCard userId={currentUser.id} />
+      <div className="nav">
+        {[["missions","MISSÕES"],["jornada","🗺️ JORNADA"],["ranking","RANKING"],["extrato","EXTRATO"],["history","HISTÓRICO"],["skills","HABILIDADES"]].map(([k,l]) => (
+          <button key={k} className={`nav-btn ${tab===k?"active":""}`} onClick={() => setTab(k)}>{l}</button>
+        ))}
+      </div>
+      {tab==="missions" && (
+        <MissionsTab missions={storeData.missions} submissions={storeData.submissions} user={currentUser} onSubmit={onUpdate} />
+      )}
+      {tab==="jornada" && (
+        <DestinoDashboard userId={currentUser.id} userPoints={currentUser.points} userName={currentUser.name} userLevel={getEffectiveLevelInfo(currentUser.id)||getLevelInfo(currentUser.points)} onIrMissoes={() => setTab("missions")} />
+      )}
+      {tab==="ranking" && <Ranking currentUserId={user.id} />}
+      {tab==="extrato" && (
+        <ExtratoJogador
+          userId={currentUser.id}
+          userName={currentUser.name}
+          userPoints={currentUser.points}
+        />
+      )}
+      {tab==="skills" && (
+        <div style={{display:"flex", flexDirection:"column", alignItems:"center", gap:24, padding:"16px 0"}}>
+          <ArchetypeCard userId={currentUser.id} showDesc={true} />
+          <SkillsTable userId={currentUser.id} />
+        </div>
+      )}
+      {tab==="history" && (
+        <div style={{display:"flex", flexDirection:"column", gap:12}}>
+          {mySubmissions.length===0 && (
+            <div style={{textAlign:"center", color:"#6a6a9a", padding:40}}>
+              <div style={{fontFamily:"Orbitron", fontSize:24, marginBottom:8}}>◈</div>
+              Nenhum comprovante enviado ainda.
+            </div>
+          )}
+          {mySubmissions.map(sub => {
+            const mission = storeData.missions.find(m => m.id === sub.missionId);
+            return (
+              <div key={sub.id} className="panel" style={{padding:16, borderRadius:4}}>
+                <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:8}}>
+                  <div>
+                    <div style={{fontFamily:"Orbitron", fontSize:13, marginBottom:4}}>{mission?.title}</div>
+                    <div style={{fontSize:12, color:"#6a6a9a"}}>{new Date(sub.createdAt).toLocaleString("pt-BR")}</div>
+                  </div>
+                  <span className={`tag ${sub.status==="approved"?"badge-approved":sub.status==="rejected"?"badge-rejected":"badge-pending"}`}>
+                    {sub.status==="approved"?"✓ APROVADA":sub.status==="rejected"?"✗ REPROVADA":"⏳ PENDENTE"}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UserAdminCard({ u, i, lvl, medal, completedList, pending }) {
+  const [showCreds, setShowCreds] = useState(false);
+  return (
+    <div className="panel" style={{padding:"18px 22px", borderRadius:4, borderColor: medal ? medal+"66" : "rgba(0,229,255,.15)"}}>
+      <div style={{display:"flex", alignItems:"center", gap:16, flexWrap:"wrap"}}>
+        <div style={{fontFamily:"Orbitron", fontWeight:900, fontSize:22, color: medal||"#6a6a9a", minWidth:32, textAlign:"center"}}>{i+1}</div>
+        <div style={{flex:1, minWidth:140}}>
+          <div style={{display:"flex", alignItems:"center", gap:8, flexWrap:"wrap"}}>
+            <div style={{fontFamily:"Orbitron", fontSize:15, fontWeight:700, color:"#e0e0ff"}}>{u.name}</div>
+          </div>
+          <div style={{fontFamily:"Orbitron", fontSize:11, color: lvl.color, marginTop:3, letterSpacing:1}}>{lvl.name}</div>
+          {(() => {
+            const a = getArchetype(u.id);
+            if (!a) return null;
+            if (a.title === "REGENTE DO EQUILÍBRIO") return <div style={{marginTop:4}}><RegenteBadge userId={u.id} /></div>;
+            return <div style={{fontFamily:"Orbitron", fontSize:9, color: a.color, marginTop:2, letterSpacing:1}}>{a.title}</div>;
+          })()}
+        </div>
+        <div style={{display:"flex", gap:20, flexWrap:"wrap", alignItems:"center"}}>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontFamily:"Orbitron", fontWeight:900, fontSize:22, color:"#ffdd00"}}>{u.points}</div>
+            <div style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", letterSpacing:1}}>PTS</div>
+          </div>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontFamily:"Orbitron", fontWeight:900, fontSize:22, color:"#00ff44"}}>{completedList.length}</div>
+            <div style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", letterSpacing:1}}>MISSÕES</div>
+          </div>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontFamily:"Orbitron", fontWeight:900, fontSize:22, color:"#ffdd00"}}>{pending}</div>
+            <div style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", letterSpacing:1}}>PENDENTES</div>
+          </div>
+          <button onClick={() => setShowCreds(!showCreds)}
+            style={{background: showCreds ? "rgba(255,215,0,.15)" : "none",
+              border:"1px solid rgba(255,215,0,.4)", color:"#ffdd00", cursor:"pointer",
+              fontFamily:"Orbitron", fontSize:9, padding:"6px 10px", borderRadius:2, transition:"all .2s"}}>
+            {showCreds ? "🔒 OCULTAR" : "🔑 CREDENCIAIS"}
+          </button>
+        </div>
+      </div>
+      {showCreds && (
+        <div style={{marginTop:14, paddingTop:12, borderTop:"1px solid rgba(255,215,0,.2)",
+          background:"rgba(255,215,0,.05)", borderRadius:4, padding:"12px 16px"}}>
+          <div style={{fontFamily:"Orbitron", fontSize:9, color:"#ffdd00", letterSpacing:2, marginBottom:10}}>🔑 CREDENCIAIS DE ACESSO</div>
+          <div style={{display:"flex", flexDirection:"column", gap:8}}>
+            {u.fullName && (
+              <div style={{display:"flex", gap:8, alignItems:"center", flexWrap:"wrap"}}>
+                <span style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", minWidth:50}}>NOME</span>
+                <span style={{fontFamily:"Rajdhani", fontSize:15, color:"#ff4dbb", background:"rgba(255,77,187,.08)", padding:"4px 12px", borderRadius:2, border:"1px solid rgba(255,77,187,.2)"}}>{u.fullName}</span>
+              </div>
+            )}
+            <div style={{display:"flex", gap:8, alignItems:"center", flexWrap:"wrap"}}>
+              <span style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", minWidth:50}}>EMAIL</span>
+              <span style={{fontFamily:"Rajdhani", fontSize:15, color:"#e0e0ff", background:"rgba(0,229,255,.08)",
+                padding:"4px 12px", borderRadius:2, border:"1px solid rgba(0,229,255,.2)"}}>{u.email}</span>
+            </div>
+            <div style={{display:"flex", gap:8, alignItems:"center", flexWrap:"wrap"}}>
+              <span style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", minWidth:50}}>SENHA</span>
+              <span style={{fontFamily:"Rajdhani", fontSize:15, color:"#00ff44", background:"rgba(57,255,20,.08)",
+                padding:"4px 12px", borderRadius:2, border:"1px solid rgba(57,255,20,.2)", letterSpacing:1}}>••••••••</span>
+            </div>
+          </div>
+        </div>
+      )}
+      {completedList.length > 0 && (
+        <div style={{marginTop:14, paddingTop:12, borderTop:"1px solid rgba(0,229,255,.1)"}}>
+          <div style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", letterSpacing:2, marginBottom:8}}>MISSÕES CONCLUÍDAS</div>
+          <div style={{display:"flex", flexWrap:"wrap", gap:6}}>
+            {completedList.map(m => (
+              <span key={m.id} className="tag badge-approved" style={{fontSize:10}}>{m.title}</span>
+            ))}
+          </div>
+        </div>
+      )}
+      {showCreds && (
+        <div style={{marginTop:14, paddingTop:12, borderTop:"1px solid rgba(255,215,0,.15)", display:"flex", justifyContent:"center"}}>
+          <RadarChart userId={u.id} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+function HistoricoItem({ item }) {
+  const isNeg = item.pontos < 0;
+  const color = isNeg ? "#ff2255" : "#00ff44";
+  const sinal = isNeg ? "" : "+";
+
+  return (
+    <div className="panel" style={{
+      padding: "12px 16px",
+      marginBottom: 8,
+      borderLeft: `3px solid ${color}`,
+      background: "rgba(255,255,255,0.03)"
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <div style={{ fontFamily: "Orbitron", fontSize: 11, color: "#6a6a9a" }}>
+            {item.tipo.toUpperCase()} • {new Date(item.data || item.createdAt).toLocaleDateString("pt-BR")}
+          </div>
+          <div style={{ fontSize: 14, color: "#e0e0ff" }}>{item.descricao}</div>
+        </div>
+        <div style={{
+          fontFamily: "Orbitron",
+          fontWeight: "900",
+          fontSize: 18,
+          color: color
+        }}>
+          {sinal}{item.pontos}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ── Extrato de Pontos do Jogador ─────────────────────────────────────────────
+function ExtratoJogador({ userId, userName, userPoints }) {
+  const [historico, setHistorico] = React.useState(null);
+  const [loading,   setLoading]   = React.useState(false);
+  const [filtro,    setFiltro]    = React.useState("todos");
+
+  const TIPO_CONFIG = {
+    aprovacao:         { label: "Aprovação",        color: "#00ff44", sinal: "+" },
+    conclusao_direta:  { label: "Concluída Direta",  color: "#39ff14", sinal: "+" },
+    estorno:           { label: "Estorno",            color: "#ff2255", sinal: ""  },
+    rebaixamento:      { label: "Rebaixamento",       color: "#ff2255", sinal: ""  },
+    bonus_login:       { label: "Bônus Login",        color: "#00e5ff", sinal: "+" },
+    bonus_streak:      { label: "Bônus Sequência",    color: "#ffd700", sinal: "+" },
+    correcao:          { label: "Correção Manual",    color: "#ff4dbb", sinal: "+" },
+  };
+
+  React.useEffect(() => {
+    if (!userId) return;
+    setLoading(true);
+    buscarHistorico(userId).then(hist => {
+      setHistorico(hist);
+      setLoading(false);
+    });
+  }, [userId]);
+
+  const filtrado = historico
+    ? (filtro === "todos" ? historico : historico.filter(h => h.tipo === filtro))
+    : [];
+
+  const totalGanho   = historico ? historico.filter(h => h.pontos > 0).reduce((s,h) => s+h.pontos, 0) : 0;
+  const totalPerdido = historico ? historico.filter(h => h.pontos < 0).reduce((s,h) => s+h.pontos, 0) : 0;
+
+  return (
+    <div>
+      {/* Resumo */}
+      <div style={{marginBottom:16, padding:"12px 16px", background:"rgba(0,229,255,.05)", border:"1px solid rgba(0,229,255,.2)", borderRadius:4}}>
+        <div style={{display:"flex", gap:20, flexWrap:"wrap"}}>
+          <div>
+            <div style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", letterSpacing:2}}>JOGADOR</div>
+            <div style={{fontFamily:"Orbitron", fontSize:14, color:"#e0e0ff", fontWeight:700}}>{userName}</div>
+          </div>
+          <div>
+            <div style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", letterSpacing:2}}>PTS ATUAIS</div>
+            <div style={{fontFamily:"Orbitron", fontSize:14, color:"#ffdd00", fontWeight:700}}>{userPoints}</div>
+          </div>
+          <div>
+            <div style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", letterSpacing:2}}>TOTAL GANHO</div>
+            <div style={{fontFamily:"Orbitron", fontSize:14, color:"#00ff44", fontWeight:700}}>+{totalGanho}</div>
+          </div>
+          <div>
+            <div style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", letterSpacing:2}}>TOTAL PERDIDO</div>
+            <div style={{fontFamily:"Orbitron", fontSize:14, color:"#ff2255", fontWeight:700}}>{totalPerdido}</div>
+          </div>
+          <div>
+            <div style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", letterSpacing:2}}>REGISTROS</div>
+            <div style={{fontFamily:"Orbitron", fontSize:14, color:"#00e5ff", fontWeight:700}}>{historico ? historico.length : "—"}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filtros */}
+      <div style={{display:"flex", gap:6, flexWrap:"wrap", marginBottom:16}}>
+        {[
+          ["todos",       "TODOS"],
+          ["aprovacao",   "APROVAÇÕES"],
+          ["conclusao_direta","DIRETA"],
+          ["bonus_login", "BÔNUS LOGIN"],
+          ["bonus_streak","SEQUÊNCIA"],
+          ["estorno",     "ESTORNOS"],
+          ["rebaixamento","REBAIXAMENTOS"],
+          ["correcao",    "CORREÇÕES"],
+        ].map(([k,l]) => (
+          <button key={k} className={`freq-btn ${filtro===k?"active":""}`} onClick={() => setFiltro(k)}>{l}</button>
+        ))}
+      </div>
+
+      {/* Loading */}
+      {loading && (
+        <div style={{textAlign:"center", padding:40}}>
+          <span className="spinner" style={{width:28, height:28}} />
+          <div style={{fontFamily:"Orbitron", fontSize:11, color:"#6a6a9a", marginTop:12}}>Carregando extrato...</div>
+        </div>
+      )}
+
+      {/* Vazio */}
+      {!loading && historico !== null && filtrado.length === 0 && (
+        <div style={{textAlign:"center", color:"#6a6a9a", padding:40}}>
+          <div style={{fontFamily:"Orbitron", fontSize:24, marginBottom:8}}>◈</div>
+          <div style={{fontFamily:"Orbitron", fontSize:12}}>
+            {filtro === "todos" ? "Nenhuma movimentação registrada ainda." : "Nenhum registro deste tipo."}
+          </div>
+          {filtro === "todos" && (
+            <div style={{fontSize:11, marginTop:8}}>O histórico registra movimentações a partir do deploy do sistema.</div>
+          )}
+        </div>
+      )}
+
+      {/* Lista */}
+      {!loading && filtrado.length > 0 && (
+        <div style={{display:"flex", flexDirection:"column", gap:8}}>
+          {filtrado.map((h, i) => {
+            const isNeg  = h.pontos < 0;
+            const cfg    = TIPO_CONFIG[h.tipo] || {};
+            const cor    = cfg.color || (isNeg ? "#ff2255" : "#00ff44");
+            const sinal  = isNeg ? "" : "+";
+            const label  = cfg.label || h.tipo;
+            const dataFmt = new Date(h.data || h.createdAt).toLocaleString("pt-BR",
+              {day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"});
+            return (
+              <div key={i} className="panel" style={{padding:"12px 16px", borderLeft:`3px solid ${cor}`, background:"rgba(255,255,255,.03)"}}>
+                <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", gap:8}}>
+                  <div style={{flex:1, minWidth:0}}>
+                    <div style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", letterSpacing:1, marginBottom:3}}>
+                      {label.toUpperCase()} • {dataFmt}
+                    </div>
+                    <div style={{fontSize:14, color:"#e0e0ff", lineHeight:1.3}}>{h.descricao}</div>
+                    {(h.pontosAntes !== undefined && h.pontosDepois !== undefined) && (
+                      <div style={{fontSize:10, color:"#6a6a9a", marginTop:3}}>
+                        {h.pontosAntes} pts → {h.pontosDepois} pts
+                      </div>
+                    )}
+                  </div>
+                  <div style={{fontFamily:"Orbitron", fontWeight:900, fontSize:20, color:cor, flexShrink:0}}>
+                    {sinal}{h.pontos}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ── Ação Admin via Edge Function (validação server-side) ─────────────────────
+// Todas as ações sensíveis passam pelo servidor que verifica o role do admin
+// antes de executar qualquer operação no banco.
+async function adminAction(action, adminId, payload) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-action`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPABASE_KEY}` },
+      body: JSON.stringify({ action, adminId, payload })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      console.error("[AdminAction] Erro:", data.error);
+      return { error: data.error || "Erro na operação." };
+    }
+    return data;
+  } catch (e) {
+    console.error("[AdminAction] Falha de rede:", e);
+    return { error: "Erro de conexão." };
+  }
+}
+
+// ── Correção Manual de Pontos (admin) ────────────────────────────────────────
+async function corrigirPontosUsuario(userId, delta, motivo) {
+  const u = store.users.find(u => u.id === userId);
+  if (!u) return { error: "Usuário não encontrado" };
+  const currentUser = store.users.find(u => u.role === "admin");
+  if (!currentUser) return { error: "Admin não encontrado." };
+  const res = await adminAction("correct_points", currentUser.id, { userId, delta, motivo });
+  if (res.error) return res;
+  const newPoints = Math.max(0, u.points + delta);
+  store.users = store.users.map(uu => uu.id === userId ? { ...uu, points: newPoints } : uu);
+  notify();
+  return { ok: true, newPoints };
+}
+
+function ExtratoAdmin({ users }) {
+  const [userId, setUserId] = React.useState("");
+  const [historico, setHistorico] = React.useState(null);
+  const [loading, setLoading] = React.useState(false);
+  const [filtroAdmin, setFiltroAdmin] = React.useState("todos");
+
+  const TIPO_CONFIG = {
+    aprovacao:    { label: "Aprovação",        color: "#00ff44", sinal: "+" },
+    estorno:      { label: "Estorno",          color: "#ff2255", sinal: ""  },
+    rebaixamento: { label: "Rebaixamento",     color: "#ff2255", sinal: ""  },
+    conclusao_direta: { label: "Concluída Direta", color: "#39ff14", sinal: "+" },
+    bonus_login:  { label: "Bônus Login",      color: "#00e5ff", sinal: "+" },
+    bonus_streak: { label: "Bônus Sequência",  color: "#ffd700", sinal: "+" },
+    correcao:     { label: "Correção Manual",  color: "#ff4dbb", sinal: "+" },
+  };
+
+  const buscar = async () => {
+    if (!userId) return;
+    setLoading(true);
+    const hist = await buscarHistorico(userId);
+    setHistorico(hist);
+    setLoading(false);
+  };
+
+  const usuarioSel = users.find(u => u.id === userId);
+
+  return (
+    <div>
+      {/* Seletor de usuário */}
+      <div style={{marginBottom:16, display:"flex", gap:8, alignItems:"center", flexWrap:"wrap"}}>
+        <select className="select" style={{flex:1, maxWidth:300}}
+          value={userId} onChange={e => { setUserId(e.target.value); setHistorico(null); }}>
+          <option value="">Selecione um usuário...</option>
+          {users.filter(u => u.role !== "admin").sort((a,b) => a.name.localeCompare(b.name)).map(u => (
+            <option key={u.id} value={u.id}>{u.name} — {u.points} pts</option>
+          ))}
+        </select>
+        <button className="btn btn-cyan" style={{fontSize:10, padding:"10px 16px"}}
+          onClick={buscar} disabled={!userId || loading}>
+          {loading ? <span className="spinner"/> : "🔍 BUSCAR"}
+        </button>
+      </div>
+
+      {/* Resumo do usuário */}
+      {usuarioSel && historico && (
+        <div style={{marginBottom:16, padding:"12px 16px", background:"rgba(0,229,255,.05)", border:"1px solid rgba(0,229,255,.2)", borderRadius:4}}>
+          <div style={{display:"flex", gap:20, flexWrap:"wrap"}}>
+            <div>
+              <div style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", letterSpacing:2}}>USUÁRIO</div>
+              <div style={{fontFamily:"Orbitron", fontSize:14, color:"#e0e0ff", fontWeight:700}}>{usuarioSel.name}</div>
+            </div>
+            <div>
+              <div style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", letterSpacing:2}}>PTS ATUAIS</div>
+              <div style={{fontFamily:"Orbitron", fontSize:14, color:"#ffdd00", fontWeight:700}}>{usuarioSel.points}</div>
+            </div>
+            <div>
+              <div style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", letterSpacing:2}}>MOVIMENTAÇÕES</div>
+              <div style={{fontFamily:"Orbitron", fontSize:14, color:"#00e5ff", fontWeight:700}}>{historico.length}</div>
+            </div>
+            <div>
+              <div style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", letterSpacing:2}}>REBAIXAMENTOS</div>
+              <div style={{fontFamily:"Orbitron", fontSize:14, color:"#ff2255", fontWeight:700}}>
+                {historico.filter(h => h.tipo === "rebaixamento").length}
+              </div>
+            </div>
+            <div>
+              <div style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", letterSpacing:2}}>TOTAL GANHO</div>
+              <div style={{fontFamily:"Orbitron", fontSize:14, color:"#00ff44", fontWeight:700}}>
+                +{historico.filter(h => h.pontos > 0).reduce((s, h) => s + h.pontos, 0)}
+              </div>
+            </div>
+            <div>
+              <div style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", letterSpacing:2}}>TOTAL PERDIDO</div>
+              <div style={{fontFamily:"Orbitron", fontSize:14, color:"#ff2255", fontWeight:700}}>
+                {historico.filter(h => h.pontos < 0).reduce((s, h) => s + h.pontos, 0)}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Correção manual de pontos */}
+      {usuarioSel && (
+        <CorrecaoManualPontos userId={userId} userName={usuarioSel.name} onCorrigido={buscar} />
+      )}
+
+      {/* Filtros */}
+      {historico !== null && historico.length > 0 && (
+        <div style={{display:"flex", gap:6, flexWrap:"wrap", marginBottom:12}}>
+          {[["todos","TODOS"],["aprovacao","APROVAÇÕES"],["conclusao_direta","DIRETA"],["bonus_login","LOGIN"],["bonus_streak","SEQUÊNCIA"],["estorno","ESTORNOS"],["rebaixamento","REBAIXAMENTOS"],["correcao","CORREÇÕES"]].map(([k,l]) => (
+            <button key={k} className={`freq-btn ${filtroAdmin===k?"active":""}`} onClick={() => setFiltroAdmin(k)}>{l}</button>
+          ))}
+        </div>
+      )}
+
+      {/* Lista de movimentações */}
+      {historico !== null && historico.length === 0 && (
+        <div style={{textAlign:"center", color:"#6a6a9a", padding:40, fontFamily:"Orbitron", fontSize:12}}>
+          Nenhuma movimentação registrada ainda.
+          <div style={{fontSize:10, marginTop:8, color:"#6a6a9a"}}>
+            O histórico registra movimentações a partir deste deploy.
+          </div>
+        </div>
+      )}
+      {historico !== null && historico.length > 0 && (() => {
+        const filtrado = filtroAdmin === "todos" ? historico : historico.filter(h => h.tipo === filtroAdmin);
+        return (
+          <>
+            {filtrado.length === 0 && (
+              <div style={{textAlign:"center", color:"#6a6a9a", padding:24, fontFamily:"Orbitron", fontSize:11}}>
+                Nenhum registro deste tipo.
+              </div>
+            )}
+            <div style={{display:"flex", flexDirection:"column", gap:0}}>
+              {filtrado.map((h, i) => (
+                <HistoricoItem key={i} item={h} />
+              ))}
+            </div>
+          </>
+        );
+      })()}
+    </div>
+  );
+}
+
+// ── Componente de Correção Manual (usado dentro do ExtratoAdmin) ──────────────
+function CorrecaoManualPontos({ userId, userName, onCorrigido }) {
+  const [delta,   setDelta]   = React.useState("");
+  const [motivo,  setMotivo]  = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+  const [msg,     setMsg]     = React.useState(null);
+
+  const aplicar = async () => {
+    const d = parseInt(delta, 10);
+    if (isNaN(d) || d === 0) return setMsg({ tipo:"erro", texto:"Informe um valor diferente de zero." });
+    if (!motivo.trim()) return setMsg({ tipo:"erro", texto:"Informe o motivo da correção." });
+    setLoading(true);
+    const res = await corrigirPontosUsuario(userId, d, motivo.trim());
+    setLoading(false);
+    if (res.error) {
+      setMsg({ tipo:"erro", texto: res.error });
+    } else {
+      setMsg({ tipo:"ok", texto:`✓ Pontos ajustados. Novo total: ${res.newPoints} pts` });
+      setDelta(""); setMotivo("");
+      if (onCorrigido) onCorrigido();
+    }
+    setTimeout(() => setMsg(null), 5000);
+  };
+
+  return (
+    <div style={{marginBottom:16, padding:"14px 16px", background:"rgba(255,77,187,.05)", border:"1px solid rgba(255,77,187,.25)", borderRadius:4}}>
+      <div style={{fontFamily:"Orbitron", fontSize:9, color:"#ff4dbb", letterSpacing:2, marginBottom:10}}>⚙ CORREÇÃO MANUAL DE PONTOS — {userName}</div>
+      <div style={{display:"flex", gap:8, flexWrap:"wrap", alignItems:"flex-end"}}>
+        <div style={{flex:"0 0 120px"}}>
+          <div className="label">DELTA (±PTS)</div>
+          <input className="input" type="number" placeholder="ex: -50 ou +100"
+            value={delta} onChange={e => setDelta(e.target.value)}
+            style={{fontFamily:"Orbitron", fontSize:13}} />
+        </div>
+        <div style={{flex:"1 1 220px"}}>
+          <div className="label">MOTIVO</div>
+          <input className="input" type="text" placeholder="Descreva o motivo da correção"
+            value={motivo} onChange={e => setMotivo(e.target.value)} />
+        </div>
+        <button className="btn btn-red" style={{fontSize:10, padding:"10px 16px", flexShrink:0}}
+          disabled={loading || !delta || !motivo.trim()} onClick={aplicar}>
+          {loading ? <span className="spinner"/> : "APLICAR"}
+        </button>
+      </div>
+      {msg && (
+        <div style={{marginTop:8, padding:"8px 12px", borderRadius:3,
+          background: msg.tipo==="ok" ? "rgba(0,255,68,.08)" : "rgba(255,23,68,.08)",
+          border: `1px solid ${msg.tipo==="ok" ? "rgba(0,255,68,.3)" : "rgba(255,23,68,.3)"}`,
+          fontFamily:"Orbitron", fontSize:10,
+          color: msg.tipo==="ok" ? "#00ff44" : "#ff6090"}}>
+          {msg.texto}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AlertasDivergencia() {
+  const [alertas, setAlertas] = React.useState(null);
+  const [loading, setLoading] = React.useState(false);
+
+  const buscar = async () => {
+    setLoading(true);
+    const raw = await fbGet("alertas_divergencia");
+    if (!raw) { setAlertas([]); setLoading(false); return; }
+    const lista = Object.values(raw)
+      .filter(a => !a.resolvido)
+      .sort((a, b) => Math.abs(b.diferenca) - Math.abs(a.diferenca));
+    setAlertas(lista);
+    setLoading(false);
+  };
+
+  const marcarResolvido = async (userId) => {
+    await fbPatch(`alertas_divergencia/${userId}`, { resolvido: true });
+    setAlertas(prev => prev.filter(a => a.userId !== userId));
+  };
+
+  return (
+    <div style={{padding:"14px 18px", background:"rgba(255,77,187,.05)", border:"1px solid rgba(255,77,187,.25)", borderRadius:4}}>
+      <div style={{fontFamily:"Orbitron", fontSize:9, color:"#ff4dbb", letterSpacing:2, marginBottom:8}}>ALERTAS DE DIVERGÊNCIA EXTRATO vs RANKING</div>
+      <div style={{fontSize:13, color:"#d0d8ff", marginBottom:12, lineHeight:1.6}}>
+        Lista de usuários onde o extrato de pontos diverge mais de 50 pts do ranking. Detectado automaticamente no login de cada usuário (1x por dia). Nenhuma pontuação é alterada — apenas alerta para revisão manual.
+      </div>
+      <button className="btn btn-cyan" style={{fontSize:10, marginBottom:12}} disabled={loading} onClick={buscar}>
+        {loading ? <span className="spinner"/> : "🔍 VERIFICAR ALERTAS"}
+      </button>
+      {alertas !== null && alertas.length === 0 && (
+        <div style={{fontFamily:"Orbitron", fontSize:11, color:"#00ff44"}}>✓ Nenhuma divergência detectada</div>
+      )}
+      {alertas !== null && alertas.length > 0 && (
+        <div style={{display:"flex", flexDirection:"column", gap:8, marginTop:4}}>
+          {alertas.map((a, i) => (
+            <div key={i} style={{padding:"12px 14px", background:"rgba(255,77,187,.08)", border:"1px solid rgba(255,77,187,.2)", borderRadius:4}}>
+              <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:8, marginBottom:6}}>
+                <span style={{fontFamily:"Orbitron", fontSize:12, color:"#ff4dbb", fontWeight:700}}>{a.nome}</span>
+                <span style={{fontSize:10, color:"#6a6a9a"}}>{new Date(a.data).toLocaleString("pt-BR", {timeZone:"America/Bahia"})}</span>
+              </div>
+              <div style={{display:"flex", gap:16, flexWrap:"wrap", marginBottom:8}}>
+                <div>
+                  <div style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", letterSpacing:1}}>RANKING</div>
+                  <div style={{fontFamily:"Orbitron", fontSize:14, color:"#ffdd00", fontWeight:700}}>{a.pontosRanking} pts</div>
+                </div>
+                <div>
+                  <div style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", letterSpacing:1}}>EXTRATO</div>
+                  <div style={{fontFamily:"Orbitron", fontSize:14, color:"#00e5ff", fontWeight:700}}>{a.pontosExtrato} pts</div>
+                </div>
+                <div>
+                  <div style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", letterSpacing:1}}>DIFERENÇA</div>
+                  <div style={{fontFamily:"Orbitron", fontSize:14, fontWeight:700, color: a.diferenca > 0 ? "#ff2255" : "#00ff44"}}>
+                    {a.diferenca > 0 ? "+" : ""}{a.diferenca} pts
+                  </div>
+                </div>
+              </div>
+              <div style={{fontSize:11, color:"#9090bb", marginBottom:8}}>
+                {a.diferenca > 0
+                  ? "Ranking maior que extrato — possível ponto não registrado no histórico."
+                  : "Extrato maior que ranking — possível estorno ou rebaixamento não refletido."}
+              </div>
+              <button className="btn" style={{fontSize:10, borderColor:"rgba(0,255,68,.3)", color:"#00ff44"}}
+                onClick={() => marcarResolvido(a.userId)}>
+                ✓ MARCAR COMO RESOLVIDO
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FerramentasAdmin({ users }) {
+  const [msg, setMsg] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+
+  const zerarMissedDays = async () => {
+    if (!window.confirm("Zerar o contador de faltas (missedDays) de todos os usuários? Recomendado após correções de bugs no sistema de rebaixamento.")) return;
+    setLoading(true);
+    // Usa adminAction (validação server-side + Promise.all paralelo no servidor)
+    const currentAdmin = store.users.find(u => u.role === "admin");
+    const userIds = users.filter(u => u.role !== "admin").map(u => u.id);
+    const res = await adminAction("reset_missed_days", currentAdmin.id, { userIds });
+    if (res.error) { setMsg("Erro: " + res.error); setLoading(false); return; }
+    store.users = store.users.map(u => u.role === "admin" ? u : { ...u, missedDays: 0 });
+    notify();
+    setLoading(false);
+    setMsg(`✓ missedDays zerado para ${users.filter(u => u.role !== "admin").length} usuários`);
+    setTimeout(() => setMsg(""), 5000);
+  };
+
+  const corrigirDailyPointsTimezone = async () => {
+    if (!window.confirm("Recalcular o dailyPoints de ontem usando o extrato para todos os usuários afetados pelo bug de timezone. Continuar?")) return;
+    setLoading(true);
+    const d = nowBRT(); d.setDate(d.getDate()-1);
+    const yStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    let corrigidos = 0;
+    // Paralelo: busca extratos de todos os usuários simultaneamente
+    const usersParaCorrigir = users.filter(u => u.role !== "admin");
+    const resultados = await Promise.all(
+      usersParaCorrigir.map(async u => {
+        const ptsExtrato = await pontosNoDiaDoExtrato(u.id, yStr);
+        if (ptsExtrato > 0) {
+          const dailyPoints = { ...(u.dailyPoints||{}), [yStr]: ptsExtrato };
+          await fbPatch(`users/${u.id}`, { dailyPoints });
+          store.users = store.users.map(uu => uu.id===u.id ? { ...uu, dailyPoints } : uu);
+          return true;
+        }
+        return false;
+      })
+    );
+    corrigidos = resultados.filter(Boolean).length;
+    notify();
+    setLoading(false);
+    setMsg(`✓ dailyPoints de ${yStr} corrigido para ${corrigidos} usuários`);
+    setTimeout(() => setMsg(""), 6000);
+  };
+
+  return (
+    <div style={{display:"flex", flexDirection:"column", gap:12}}>
+
+      <AlertasDivergencia />
+
+      {/* RESET DE FALTAS */}
+      <div style={{padding:"14px 18px", background:"rgba(0,229,255,.05)", border:"1px solid rgba(0,229,255,.2)", borderRadius:4}}>
+        <div style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", letterSpacing:2, marginBottom:8}}>RESET DE FALTAS</div>
+        <div style={{fontSize:13, color:"#d0d8ff", marginBottom:12, lineHeight:1.6}}>
+          Zera o contador <code style={{fontFamily:"monospace", fontSize:11, background:"rgba(0,229,255,.1)", padding:"1px 5px"}}>missedDays</code> de todos os usuários. Use após correção de bugs no sistema de rebaixamento.
+        </div>
+        <button className="btn btn-cyan" style={{fontSize:10}} disabled={loading} onClick={zerarMissedDays}>
+          {loading ? <span className="spinner"/> : "↺ ZERAR missedDays DE TODOS"}
+        </button>
+      </div>
+
+      {/* CORREÇÃO DE TIMEZONE */}
+      <div style={{padding:"14px 18px", background:"rgba(255,215,0,.04)", border:"1px solid rgba(255,215,0,.2)", borderRadius:4}}>
+        <div style={{fontFamily:"Orbitron", fontSize:9, color:"#8a7a40", letterSpacing:2, marginBottom:8}}>CORREÇÃO DE TIMEZONE</div>
+        <div style={{fontSize:13, color:"#d0d8ff", marginBottom:12, lineHeight:1.6}}>
+          Recalcula o <code style={{fontFamily:"monospace", fontSize:11, background:"rgba(255,215,0,.1)", padding:"1px 5px"}}>dailyPoints</code> de ontem usando o extrato. Corrige usuários com pontos gravados no dia errado pelo bug de timezone.
+        </div>
+        <button className="btn btn-yellow" style={{fontSize:10}} disabled={loading} onClick={corrigirDailyPointsTimezone}>
+          {loading ? <span className="spinner"/> : "🕐 CORRIGIR DAILYPOINTS DE ONTEM"}
+        </button>
+      </div>
+
+      {msg && (
+        <div style={{padding:"12px 16px", background:"rgba(0,255,68,.08)", border:"1px solid rgba(0,255,68,.3)", borderRadius:4, fontFamily:"Orbitron", fontSize:11, color:"#00ff44"}}>
+          {msg}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ExportarUsuarios({ users }) {
+  const [busca, setBusca] = React.useState("");
+  const [sortCol, setSortCol] = React.useState("points");
+  const [sortDir, setSortDir] = React.useState(-1);
+  const [copiado, setCopiado] = React.useState(false);
+
+  const NIVEL_CONFIG = {
+    "ANCIÃO":           { color:"#ff2255", bg:"rgba(255,34,85,.15)"   },
+    "ATALAIA":          { color:"#ff4400", bg:"rgba(255,68,0,.15)"    },
+    "SENTINELA":        { color:"#ffdd00", bg:"rgba(255,221,0,.15)"   },
+    "SOLDADO":          { color:"#00ccff", bg:"rgba(0,204,255,.15)"   },
+    "APRENDIZ":         { color:"#00ff44", bg:"rgba(0,255,68,.12)"    },
+    "RECÉM-CONVERTIDO": { color:"#a0a0cc", bg:"rgba(160,160,204,.12)" },
+  };
+
+  function getPresenca(u) {
+    const d = nowBRT();
+    const hoje = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    const last = u.lastLoginBonus || u.lastActiveDay || null;
+    if (!last) return { label:"💤 Ausente", color:"#ff2255" };
+    const diff = Math.floor((new Date(hoje)-new Date(last))/86400000);
+    if (diff<=1) return { label:"⚔️ Em Combate", color:"#00ff44" };
+    if (diff<=4) return { label:"⚡ Em Marcha",  color:"#ffdd00" };
+    return { label:"💤 Ausente", color:"#ff2255" };
+  }
+
+  const lista = users
+    .filter(u => u && u.role !== "admin")
+    .map(u => ({
+      nome:         u.name || "—",
+      nomeCompleto: u.fullName || "—",
+      email:        u.email || "—",
+      points:       u.points || 0,
+      nivel:        getLevelInfo(u.points||0).name,
+      streak:       u.streakDays || 0,
+      streakRec:    u.streakRecord || 0,
+      missoes:      (u.completedMissions||[]).length,
+      missedDays:   u.missedDays || 0,
+      lastLogin:    u.lastLoginBonus || u.lastActiveDay || null,
+      presenca:     getPresenca(u),
+    }));
+
+  const filtrada = lista.filter(u =>
+    !busca.trim() ||
+    u.nome.toLowerCase().includes(busca.toLowerCase()) ||
+    u.email.toLowerCase().includes(busca.toLowerCase()) ||
+    u.nomeCompleto.toLowerCase().includes(busca.toLowerCase())
+  );
+
+  const sorted = [...filtrada].sort((a,b) => {
+    const va = a[sortCol], vb = b[sortCol];
+    return typeof va==="string" ? va.localeCompare(vb)*sortDir : (va-vb)*sortDir;
+  });
+
+  function handleSort(col) {
+    if (sortCol===col) setSortDir(d=>d*-1);
+    else { setSortCol(col); setSortDir(-1); }
+  }
+
+  function exportarCSV() {
+    const s = [...lista].sort((a,b)=>b.points-a.points);
+    const header = ["#","Nome Bíblico","Nome Completo","E-mail","Pontos","Nível","Streak","Recorde","Missões","Presença","Último Acesso"];
+    const rows = s.map((u,i) => [
+      i+1, u.nome, u.nomeCompleto, u.email, u.points, u.nivel,
+      u.streak, u.streakRec, u.missoes,
+      u.presenca.label.replace(/[^\w\s]/g,"").trim(),
+      u.lastLogin ? new Date(u.lastLogin).toLocaleDateString("pt-BR") : "—"
+    ]);
+    const csv = [header,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+    const blob = new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href=url; a.download=`usuarios-levelup-${todayStr()}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function copiarTabela() {
+    const s = [...lista].sort((a,b)=>b.points-a.points);
+    const header = ["Nome Bíblico","Nome Completo","E-mail","Pontos","Nível","Presença"].join(" ");
+    const rows = s.map(u=>[u.nome,u.nomeCompleto,u.email,u.points,u.nivel,u.presenca.label.replace(/[^\w\s]/g,"").trim()].join("        "));
+    navigator.clipboard.writeText([header,...rows].join("\n")).then(()=>{
+      setCopiado(true); setTimeout(()=>setCopiado(false),2000);
+    });
+  }
+
+  const COLS = [
+    {key:"nome",         label:"Nome Bíblico"  },
+    {key:"nomeCompleto", label:"Nome Completo" },
+    {key:"email",        label:"E-mail"        },
+    {key:"points",       label:"Pontos"        },
+    {key:"nivel",        label:"Nível"         },
+    {key:"streak",       label:"Streak"        },
+    {key:"missoes",      label:"Missões"       },
+  ];
+
+  const emCombate = lista.filter(u=>u.presenca.label.includes("Combate")).length;
+  const emMarcha  = lista.filter(u=>u.presenca.label.includes("Marcha")).length;
+  const ausente   = lista.filter(u=>u.presenca.label.includes("Ausente")).length;
+
+  return (
+    <div>
+      {/* Resumo */}
+      <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:16}}>
+        {[
+          {label:"Total",      val:lista.length,  color:"#00ccff"},
+          {label:"Em Combate", val:emCombate,      color:"#00ff44"},
+          {label:"Em Marcha",  val:emMarcha,       color:"#ffdd00"},
+          {label:"Ausentes",   val:ausente,        color:"#ff2255"},
+        ].map(s=>(
+          <div key={s.label} style={{background:"rgba(0,229,255,.06)",border:"1px solid rgba(0,229,255,.15)",borderRadius:4,padding:"10px 16px",textAlign:"center",minWidth:80}}>
+            <div style={{fontFamily:"Orbitron",fontSize:20,fontWeight:900,color:s.color}}>{s.val}</div>
+            <div style={{fontFamily:"Orbitron",fontSize:9,color:"#6a6a9a",marginTop:2}}>{s.label.toUpperCase()}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Toolbar */}
+      <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center",marginBottom:14}}>
+        <input
+          value={busca} onChange={e=>setBusca(e.target.value)}
+          placeholder="Buscar nome ou e-mail..."
+          style={{flex:1,maxWidth:280,background:"rgba(0,229,255,.04)",border:"1px solid rgba(0,229,255,.2)",color:"#d0d8ff",fontFamily:"Rajdhani,sans-serif",fontSize:14,padding:"8px 12px",outline:"none",borderRadius:2}}
+        />
+        <button className="btn btn-cyan" style={{fontSize:10,padding:"8px 14px"}} onClick={exportarCSV}>
+          ⬇ BAIXAR CSV
+        </button>
+        <button className="btn" style={{fontSize:10,padding:"8px 14px",borderColor:"rgba(255,215,0,.4)",color:"#ffd700"}} onClick={copiarTabela}>
+          {copiado ? "✓ COPIADO!" : "⎘ COPIAR"}
+        </button>
+      </div>
+
+      {/* Tabela */}
+      <div style={{overflowX:"auto"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+          <thead>
+            <tr style={{borderBottom:"1px solid rgba(0,229,255,.2)"}}>
+              <th style={{fontFamily:"Orbitron",fontSize:9,color:"#6a6a9a",padding:"8px 10px",textAlign:"left",whiteSpace:"nowrap"}}>#</th>
+              {COLS.map(col=>(
+                <th key={col.key}
+                  onClick={()=>handleSort(col.key)}
+                  style={{fontFamily:"Orbitron",fontSize:9,color:sortCol===col.key?"#00e5ff":"#6a6a9a",padding:"8px 10px",textAlign:"left",whiteSpace:"nowrap",cursor:"pointer",userSelect:"none"}}>
+                  {col.label} <span style={{opacity:.5}}>{sortCol===col.key?(sortDir===-1?"↓":"↑"):"↕"}</span>
+                </th>
+              ))}
+              <th style={{fontFamily:"Orbitron",fontSize:9,color:"#6a6a9a",padding:"8px 10px",textAlign:"left"}}>PRESENÇA</th>
+              <th style={{fontFamily:"Orbitron",fontSize:9,color:"#6a6a9a",padding:"8px 10px",textAlign:"left"}}>ÚLTIMO ACESSO</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((u,i)=>{
+              const nv = NIVEL_CONFIG[u.nivel] || NIVEL_CONFIG["RECÉM-CONVERTIDO"];
+              const last = u.lastLogin ? new Date(u.lastLogin).toLocaleDateString("pt-BR") : "—";
+              return (
+                <tr key={u.email} style={{borderBottom:"1px solid rgba(255,255,255,.05)"}}>
+                  <td style={{padding:"9px 10px",color:"#6a6a9a",fontFamily:"Orbitron",fontSize:10}}>{i+1}</td>
+                  <td style={{padding:"9px 10px",fontFamily:"Orbitron",fontSize:12,color:"#00ccff",fontWeight:700}}>{u.nome}</td>
+                  <td style={{padding:"9px 10px",fontSize:12,color:"#d0d8ff"}}>{u.nomeCompleto}</td>
+                  <td style={{padding:"9px 10px",fontSize:11,color:"#9090bb"}}>{u.email}</td>
+                  <td style={{padding:"9px 10px",fontFamily:"Orbitron",fontSize:13,fontWeight:900,color:"#ffdd00"}}>{u.points.toLocaleString("pt-BR")}</td>
+                  <td style={{padding:"9px 10px"}}><span style={{fontFamily:"Orbitron",fontSize:9,padding:"3px 8px",borderRadius:3,color:nv.color,background:nv.bg}}>{u.nivel}</span></td>
+                  <td style={{padding:"9px 10px",fontFamily:"Orbitron",fontSize:11,color:"#ffd700"}}>🔥{u.streak} <span style={{color:"#6a6a9a",fontSize:9}}>rec:{u.streakRec}</span></td>
+                  <td style={{padding:"9px 10px",fontFamily:"Orbitron",fontSize:12,color:"#00ff44"}}>{u.missoes}</td>
+                  <td style={{padding:"9px 10px",fontSize:11,color:u.presenca.color,fontFamily:"Orbitron"}}>{u.presenca.label}</td>
+                  <td style={{padding:"9px 10px",fontSize:11,color:"#6a6a9a"}}>{last}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {sorted.length===0 && (
+          <div style={{textAlign:"center",color:"#6a6a9a",padding:40,fontFamily:"Orbitron",fontSize:12}}>
+            Nenhum usuário encontrado.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Gincana Admin ─────────────────────────────────────────────────────────────
+// ── Mapa QR Code → Equipe (configurável pelo ADM) ────────────────────────────
+// Chave = código exato que vem no QR; Valor = letra da equipe ('A','B','C','D')
+// O ADM configura isso uma vez antes do acampamento.
+// ── Gincana: persistência no Supabase (tabela gincana_config) ────────────────
+// Estrutura esperada: id TEXT PK, valor JSONB
+// Linhas fixas:  'placar'  → {A:0,B:0,C:0,D:0}
+//                'log'     → [{ts,equipe,pontos,descricao}]
+//                'qr_map'  → {"TEXTO_QR":"A", ...}
+const _sbG = () => window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+async function gincanaGet(chave) {
+  try {
+    const { data, error } = await _sbG().from("gincana_config").select("valor").eq("id", chave).single();
+    if (error || !data) return null;
+    return data.valor;
+  } catch(e) { return null; }
+}
+
+async function gincanaSet(chave, valor) {
+  try {
+    await _sbG().from("gincana_config").upsert({ id: chave, valor }, { onConflict: "id" });
+  } catch(e) { console.error("gincanaSet erro:", e); }
+}
+
+function GincanaAdmin({ users }) {
+  const COR_EQUIPE = { A:"#00e5ff", B:"#ff4dbb", C:"#00ff44", D:"#ffd700" };
+
+  const [placar,    setPlacar]    = useState({A:0,B:0,C:0,D:0});
+  const [log,       setLog]       = useState([]);
+  const [qrMap,     setQrMap]     = useState({});
+  const [carregando, setCarregando] = useState(true);
+
+  // Scanner
+  const [qrInput,   setQrInput]   = useState("");
+  const [motivo,    setMotivo]    = useState("");
+  const [qrMsg,     setQrMsg]     = useState(null);
+  const [pts,       setPts]       = useState(GINCANA_PONTOS_SCAN);
+  const [salvando,  setSalvando]  = useState(false);
+  const [countdown, setCountdown] = useState(0); // contagem regressiva visual
+  const autoScanTimer = React.useRef(null);
+  const countdownTimer = React.useRef(null);
+
+  // Dispara handleScan automaticamente 1,5s após o último caractere digitado
+  function agendarAutoScan(val) {
+    // Limpa timers anteriores
+    if (autoScanTimer.current)  clearTimeout(autoScanTimer.current);
+    if (countdownTimer.current) clearInterval(countdownTimer.current);
+    if (!val.trim()) { setCountdown(0); return; }
+
+    // Contagem regressiva visual: 1 → 0
+    setCountdown(1);
+    let c = 1;
+    countdownTimer.current = setInterval(() => {
+      c = Math.max(0, c - 0.1);
+      setCountdown(parseFloat(c.toFixed(1)));
+    }, 100);
+
+    autoScanTimer.current = setTimeout(() => {
+      clearInterval(countdownTimer.current);
+      setCountdown(0);
+      handleScanRef.current();
+    }, 1000);
+  }
+
+  // Ref para handleScan (evita closure stale no timer)
+  const handleScanRef = React.useRef(null);
+
+  // Config QR → Equipe
+  const [novoQr,    setNovoQr]    = useState("");
+  const [novoEq,    setNovoEq]    = useState("A");
+
+  // Creditagem manual
+  const [manualEq,  setManualEq]  = useState("A");
+  const [manualPts, setManualPts] = useState(GINCANA_PONTOS_SCAN);
+  const [manualMot, setManualMot] = useState("");
+
+  const [abaGinc,   setAbaGinc]  = useState("scanner");
+
+  // ── Carregar dados do Supabase ──
+  async function carregarTudo() {
+    setCarregando(true);
+    const [p, l, q] = await Promise.all([
+      gincanaGet("placar"),
+      gincanaGet("log"),
+      gincanaGet("qr_map"),
+    ]);
+    if (p) setPlacar(p);
+    if (l) setLog(Array.isArray(l) ? l : []);
+    if (q) setQrMap(q);
+    setCarregando(false);
+  }
+
+  // Polling a cada 5 segundos para sincronizar os 2 celulares
+  useEffect(() => {
+    carregarTudo();
+    const intervalo = setInterval(carregarTudo, 5000);
+    return () => clearInterval(intervalo);
+  }, []);
+
+  const maxPts = Math.max(...Object.values(placar), 1);
+  const freezeAtivo = isAcampamentoAtivo();
+
+  // ── Creditar equipe (grava no Supabase) ──
+  async function creditar(equipe, pontos, descricao) {
+    setSalvando(true);
+    // Lê placar fresco antes de somar (evita conflito entre 2 celulares)
+    const placarAtual = (await gincanaGet("placar")) || placar;
+    const novoPlacar  = { ...placarAtual, [equipe]: (placarAtual[equipe]||0) + pontos };
+
+    const logAtual = (await gincanaGet("log")) || [];
+    const novoLog  = [
+      { ts: new Date().toLocaleString("pt-BR"), equipe, pontos, descricao },
+      ...(Array.isArray(logAtual) ? logAtual : [])
+    ].slice(0, 200);
+
+    await Promise.all([
+      gincanaSet("placar", novoPlacar),
+      gincanaSet("log",    novoLog),
+    ]);
+    setPlacar(novoPlacar);
+    setLog(novoLog);
+    setSalvando(false);
+  }
+
+  // ── Processar scan de QR ──
+  async function handleScan() {
+    const val = qrInput.trim();
+    if (!val) return;
+    // Cancela qualquer timer pendente
+    if (autoScanTimer.current)  clearTimeout(autoScanTimer.current);
+    if (countdownTimer.current) clearInterval(countdownTimer.current);
+    setCountdown(0);
+    const equipe = qrMap[val];
+    if (!equipe) {
+      setQrMsg({ ok: false, texto: `QR "${val}" não mapeado. Configure na aba CONFIG QR.` });
+      return;
+    }
+    const desc = motivo || `Scan QR – Líder equipe ${equipe}`;
+    await creditar(equipe, pts, desc);
+    setQrMsg({ ok: true, texto: `✓ +${pts} pts creditados para Equipe ${equipe}!` });
+    setQrInput("");
+    setMotivo("");
+    setTimeout(() => setQrMsg(null), 4000);
+  }
+  // Mantém a ref sempre atualizada (evita closure stale no setTimeout)
+  handleScanRef.current = handleScan;
+
+  // ── Creditagem manual ──
+  async function handleManual() {
+    if (!manualPts || manualPts <= 0) return;
+    const desc = manualMot || `Creditagem manual – Equipe ${manualEq}`;
+    await creditar(manualEq, Number(manualPts), desc);
+    setQrMsg({ ok: true, texto: `✓ +${manualPts} pts creditados para Equipe ${manualEq}!` });
+    setManualMot("");
+    setTimeout(() => setQrMsg(null), 4000);
+  }
+
+  // ── Config QR Map ──
+  async function handleAddQr() {
+    if (!novoQr.trim()) return;
+    const novo = { ...qrMap, [novoQr.trim()]: novoEq };
+    setQrMap(novo);
+    await gincanaSet("qr_map", novo);
+    setNovoQr("");
+  }
+  async function handleRemoveQr(key) {
+    const novo = { ...qrMap };
+    delete novo[key];
+    setQrMap(novo);
+    await gincanaSet("qr_map", novo);
+  }
+
+  // ── Zerar placar ──
+  async function handleZerar() {
+    if (!window.confirm("Zerar o placar da Gincana? Essa ação não pode ser desfeita.")) return;
+    const zero = {A:0,B:0,C:0,D:0};
+    await gincanaSet("placar", zero);
+    setPlacar(zero);
+  }
+
+  return (
+    <div style={{display:"flex", flexDirection:"column", gap:20}}>
+
+      {/* ── Banner modo acampamento ── */}
+      <div style={{padding:"12px 16px", borderRadius:4,
+        background: freezeAtivo ? "rgba(0,255,68,.07)" : "rgba(255,221,0,.07)",
+        border:`1px solid ${freezeAtivo?"rgba(0,255,68,.3)":"rgba(255,221,0,.3)"}`,
+        display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, flexWrap:"wrap"}}>
+        <div style={{display:"flex", alignItems:"center", gap:12}}>
+          <span style={{fontSize:20}}>{freezeAtivo?"🏕":"⏳"}</span>
+          <div>
+            <div style={{fontFamily:"Orbitron", fontSize:10, letterSpacing:1,
+              color: freezeAtivo?"#00ff44":"#ffdd00"}}>
+              {freezeAtivo?"MODO ACAMPAMENTO ATIVO — FREEZE ON":"MODO ACAMPAMENTO INATIVO"}
+            </div>
+            <div style={{fontSize:11, color:"#9090bb", marginTop:2}}>
+              {freezeAtivo
+                ? "Placar sincronizado via Supabase — ambos os celulares em tempo real."
+                : `Período configurado: ${ACAMPA_DATES.start} → ${ACAMPA_DATES.end}`}
+            </div>
+          </div>
+        </div>
+        <div style={{display:"flex", alignItems:"center", gap:8}}>
+          {salvando && <span style={{fontFamily:"Orbitron", fontSize:9, color:"#ffdd00", letterSpacing:1}}>💾 SALVANDO...</span>}
+          {carregando && !salvando && <span style={{fontFamily:"Orbitron", fontSize:9, color:"#00e5ff", letterSpacing:1}}>↻ SYNC...</span>}
+          <button className="btn btn-ghost" style={{fontSize:9, padding:"5px 12px"}} onClick={carregarTudo}>↺ ATUALIZAR</button>
+        </div>
+      </div>
+
+      {/* ── Placar neon ── */}
+      <div className="panel panel-cyan">
+        <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16}}>
+          <div style={{fontFamily:"Orbitron", fontSize:12, letterSpacing:2, color:"#00e5ff"}}>🏆 PLACAR</div>
+          <button className="btn btn-red" style={{fontSize:9, padding:"5px 12px"}} onClick={handleZerar}>↺ ZERAR</button>
+        </div>
+        <div style={{display:"flex", flexDirection:"column", gap:14}}>
+          {[...GINCANA_EQUIPES]
+            .sort((a,b) => placar[b] - placar[a])
+            .map((eq, i) => {
+              const p   = placar[eq] || 0;
+              const pct = Math.round((p / maxPts) * 100);
+              const cor = COR_EQUIPE[eq];
+              const medalhas = ["🥇","🥈","🥉","4º"];
+              return (
+                <div key={eq}>
+                  <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5}}>
+                    <div style={{display:"flex", alignItems:"center", gap:8}}>
+                      <span style={{fontSize:15, minWidth:24}}>{medalhas[i]}</span>
+                      <span style={{fontFamily:"Orbitron", fontSize:15, fontWeight:900, color:cor}}>EQUIPE {eq}</span>
+                    </div>
+                    <span style={{fontFamily:"Orbitron", fontSize:20, fontWeight:900, color:cor,
+                      textShadow:`0 0 16px ${cor}`}}>
+                      {p.toLocaleString("pt-BR")} <span style={{fontSize:11}}>pts</span>
+                    </span>
+                  </div>
+                  <div style={{height:16, background:"rgba(255,255,255,.05)", borderRadius:2,
+                    overflow:"hidden", border:`1px solid ${cor}33`}}>
+                    <div style={{height:"100%", width:`${pct||0}%`,
+                      background:`linear-gradient(90deg,${cor}66,${cor})`,
+                      boxShadow:`0 0 10px ${cor}`, borderRadius:2, transition:"width .7s ease"}}/>
+                  </div>
+                </div>
+              );
+            })}
+        </div>
+      </div>
+
+      {/* ── Sub-abas ── */}
+      <div style={{display:"flex", gap:0, borderBottom:"1px solid rgba(0,229,255,.15)", flexWrap:"wrap"}}>
+        {[["scanner","📲 SCANNER QR"],["manual","✏️ MANUAL"],["config","⚙️ CONFIG QR"],["log","📋 LOG"]].map(([k,l]) => (
+          <button key={k} onClick={()=>setAbaGinc(k)}
+            style={{fontFamily:"Orbitron", fontSize:10, letterSpacing:1, padding:"8px 16px",
+              background:"none", border:"none", borderBottom:`2px solid ${abaGinc===k?"#00e5ff":"transparent"}`,
+              color: abaGinc===k?"#00e5ff":"#6a6a9a", cursor:"pointer", transition:"all .2s"}}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Feedback global ── */}
+      {qrMsg && (
+        <div style={{padding:"10px 14px", borderRadius:3,
+          background: qrMsg.ok?"rgba(0,255,68,.1)":"rgba(255,23,68,.1)",
+          border:`1px solid ${qrMsg.ok?"rgba(0,255,68,.35)":"rgba(255,23,68,.35)"}`,
+          color: qrMsg.ok?"#00ff44":"#ff6090",
+          fontFamily:"Orbitron", fontSize:12, letterSpacing:.5}}>
+          {qrMsg.texto}
+        </div>
+      )}
+
+      {/* ── Aba: Scanner QR ── */}
+      {abaGinc==="scanner" && (
+        <div className="panel" style={{display:"flex", flexDirection:"column", gap:12}}>
+          <div style={{fontSize:13, color:"#9090bb"}}>
+            Escaneie o QR do crachá — a equipe será creditada <strong style={{color:"#00e5ff"}}>automaticamente em 1 segundo</strong> após a leitura.
+          </div>
+          <div style={{position:"relative"}}>
+            <input className="input" autoFocus
+              placeholder="Aguardando leitura do QR Code..."
+              value={qrInput}
+              onChange={e => { setQrInput(e.target.value); agendarAutoScan(e.target.value); }}
+              onKeyDown={e => e.key==="Enter" && handleScan()}
+              style={{paddingRight: countdown>0 ? 48 : 14}}
+            />
+            {countdown > 0 && (
+              <div style={{position:"absolute", right:10, top:"50%", transform:"translateY(-50%)",
+                fontFamily:"Orbitron", fontSize:12, fontWeight:900, color:"#ffdd00",
+                textShadow:"0 0 8px #ffdd00"}}>
+                {countdown.toFixed(1)}s
+              </div>
+            )}
+            {/* Barra de progresso do countdown */}
+            {countdown > 0 && (
+              <div style={{position:"absolute", bottom:0, left:0, right:0, height:3,
+                background:"rgba(255,221,0,.15)", borderRadius:"0 0 3px 3px", overflow:"hidden"}}>
+                <div style={{height:"100%", background:"#ffdd00",
+                  width:`${(countdown/1)*100}%`, transition:"width .1s linear",
+                  boxShadow:"0 0 6px #ffdd00"}}/>
+              </div>
+            )}
+          </div>
+          <div style={{display:"flex", gap:10, alignItems:"center", flexWrap:"wrap"}}>
+            <div style={{flex:1, minWidth:160}}>
+              <div style={{fontSize:11, color:"#6a6a9a", marginBottom:4, fontFamily:"Orbitron", letterSpacing:1}}>PONTOS</div>
+              <input className="input" type="number" min="1" value={pts}
+                onChange={e=>setPts(Number(e.target.value))} style={{fontSize:14}}/>
+            </div>
+            <div style={{flex:2, minWidth:200}}>
+              <div style={{fontSize:11, color:"#6a6a9a", marginBottom:4, fontFamily:"Orbitron", letterSpacing:1}}>MOTIVO (opcional)</div>
+              <input className="input" placeholder="ex: Devocional Manhã Dia 1"
+                value={motivo} onChange={e=>setMotivo(e.target.value)}/>
+            </div>
+          </div>
+          <button className="btn btn-cyan" style={{fontSize:11}} disabled={!qrInput.trim() || salvando} onClick={handleScan}>
+            {salvando ? <span className="spinner"/> : "⚡ CREDITAR AGORA"}
+          </button>
+          {Object.keys(qrMap).length===0 && (
+            <div style={{fontSize:12, color:"#ffdd00", padding:"8px 12px",
+              background:"rgba(255,221,0,.07)", border:"1px solid rgba(255,221,0,.2)", borderRadius:3}}>
+              ⚠️ Nenhum QR mapeado ainda. Vá na aba <strong>CONFIG QR</strong> para vincular cada código à sua equipe.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Aba: Creditagem Manual ── */}
+      {abaGinc==="manual" && (
+        <div className="panel" style={{display:"flex", flexDirection:"column", gap:12}}>
+          <div style={{fontSize:13, color:"#9090bb"}}>Crédito direto por equipe, sem QR Code.</div>
+          <div style={{display:"flex", gap:8, flexWrap:"wrap"}}>
+            {GINCANA_EQUIPES.map(eq => (
+              <button key={eq} onClick={()=>setManualEq(eq)}
+                style={{fontFamily:"Orbitron", fontSize:13, fontWeight:900, padding:"10px 20px",
+                  border:`2px solid ${manualEq===eq?COR_EQUIPE[eq]:COR_EQUIPE[eq]+"44"}`,
+                  borderRadius:3, background: manualEq===eq?`${COR_EQUIPE[eq]}22`:"transparent",
+                  color: manualEq===eq?COR_EQUIPE[eq]:"#6a6a9a", cursor:"pointer", transition:"all .2s",
+                  boxShadow: manualEq===eq?`0 0 12px ${COR_EQUIPE[eq]}66`:"none"}}>
+                EQUIPE {eq}
+              </button>
+            ))}
+          </div>
+          <div style={{display:"flex", gap:10, flexWrap:"wrap"}}>
+            <div style={{flex:1, minWidth:120}}>
+              <div style={{fontSize:11, color:"#6a6a9a", marginBottom:4, fontFamily:"Orbitron", letterSpacing:1}}>PONTOS</div>
+              <input className="input" type="number" min="1" value={manualPts}
+                onChange={e=>setManualPts(e.target.value)}/>
+            </div>
+            <div style={{flex:2, minWidth:200}}>
+              <div style={{fontSize:11, color:"#6a6a9a", marginBottom:4, fontFamily:"Orbitron", letterSpacing:1}}>MOTIVO</div>
+              <input className="input" placeholder="ex: Prova de bíblia – Dia 2"
+                value={manualMot} onChange={e=>setManualMot(e.target.value)}
+                onKeyDown={e=>e.key==="Enter"&&handleManual()}/>
+            </div>
+          </div>
+          <button className="btn btn-cyan" style={{fontSize:11}} onClick={handleManual}
+            disabled={!manualPts||manualPts<=0}>
+            ⚡ CREDITAR EQUIPE {manualEq} +{manualPts} pts
+          </button>
+        </div>
+      )}
+
+      {/* ── Aba: Config QR ── */}
+      {abaGinc==="config" && (
+        <div className="panel" style={{display:"flex", flexDirection:"column", gap:16}}>
+          <div style={{fontSize:13, color:"#9090bb"}}>
+            Vincule o conteúdo exato de cada QR Code à sua equipe. O QR do crachá deve conter apenas o texto cadastrado aqui.
+          </div>
+          <div style={{display:"flex", gap:8, flexWrap:"wrap", alignItems:"flex-end"}}>
+            <div style={{flex:2, minWidth:180}}>
+              <div style={{fontSize:11, color:"#6a6a9a", marginBottom:4, fontFamily:"Orbitron", letterSpacing:1}}>TEXTO DO QR CODE</div>
+              <input className="input" placeholder="ex: LIDER_EQUIPE_A"
+                value={novoQr} onChange={e=>setNovoQr(e.target.value)}
+                onKeyDown={e=>e.key==="Enter"&&handleAddQr()}/>
+            </div>
+            <div style={{flex:1, minWidth:100}}>
+              <div style={{fontSize:11, color:"#6a6a9a", marginBottom:4, fontFamily:"Orbitron", letterSpacing:1}}>EQUIPE</div>
+              <select className="input" value={novoEq} onChange={e=>setNovoEq(e.target.value)}
+                style={{cursor:"pointer"}}>
+                {GINCANA_EQUIPES.map(eq=><option key={eq} value={eq}>Equipe {eq}</option>)}
+              </select>
+            </div>
+            <button className="btn btn-green" style={{fontSize:10, padding:"10px 16px", flexShrink:0}}
+              onClick={handleAddQr} disabled={!novoQr.trim()}>
+              + ADICIONAR
+            </button>
+          </div>
+          {Object.keys(qrMap).length===0
+            ? <div style={{color:"#6a6a9a", fontSize:13, textAlign:"center", padding:20}}>Nenhum QR cadastrado ainda.</div>
+            : (
+              <table style={{width:"100%", borderCollapse:"collapse", fontSize:13}}>
+                <thead>
+                  <tr style={{borderBottom:"1px solid rgba(0,229,255,.15)"}}>
+                    {["QR CODE (TEXTO)","EQUIPE",""].map(h=>(
+                      <th key={h} style={{fontFamily:"Orbitron", fontSize:9, letterSpacing:1,
+                        color:"#6a6a9a", padding:"6px 10px", textAlign:"left"}}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(qrMap).map(([k,v])=>(
+                    <tr key={k} style={{borderBottom:"1px solid rgba(255,255,255,.04)"}}>
+                      <td style={{padding:"8px 10px", color:"#d0d8ff", fontFamily:"monospace", fontSize:12}}>{k}</td>
+                      <td style={{padding:"8px 10px", fontFamily:"Orbitron", fontWeight:900, fontSize:13,
+                        color:COR_EQUIPE[v]}}>{v}</td>
+                      <td style={{padding:"8px 10px"}}>
+                        <button className="btn btn-red" style={{fontSize:9, padding:"4px 10px"}}
+                          onClick={()=>handleRemoveQr(k)}>✕</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+        </div>
+      )}
+
+      {/* ── Aba: Log ── */}
+      {abaGinc==="log" && (
+        <div className="panel" style={{display:"flex", flexDirection:"column", gap:10}}>
+          {log.length===0
+            ? <div style={{color:"#6a6a9a", fontSize:13, textAlign:"center", padding:20}}>Nenhum evento registrado ainda.</div>
+            : log.map((e,i)=>(
+              <div key={i} style={{display:"flex", justifyContent:"space-between", alignItems:"center",
+                padding:"8px 12px", borderRadius:3, background:"rgba(255,255,255,.03)",
+                border:"1px solid rgba(255,255,255,.06)", flexWrap:"wrap", gap:6}}>
+                <div>
+                  <span style={{fontFamily:"Orbitron", fontSize:12, fontWeight:900,
+                    color:COR_EQUIPE[e.equipe]}}>EQUIPE {e.equipe}</span>
+                  <span style={{fontSize:11, color:"#9090bb", marginLeft:10}}>{e.descricao}</span>
+                </div>
+                <div style={{display:"flex", alignItems:"center", gap:12}}>
+                  <span style={{fontFamily:"Orbitron", fontSize:13, color:"#00ff44"}}>+{e.pontos}</span>
+                  <span style={{fontSize:10, color:"#6a6a9a"}}>{e.ts}</span>
+                </div>
+              </div>
+            ))}
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+function AdminDashboard({ adminUser }) {
+  const [tab, setTab]           = useState("validations");
+  const [storeData, setStoreData] = useState(getStore());
+  const [preview, setPreview]   = useState(null);
+  const [cleaning, setCleaning] = useState(false);
+  const [cleanMsg, setCleanMsg] = useState("");
+  useEffect(() => {
+    // Retorna a função de unsubscribe como cleanup — evita listener órfão após desmontagem
+    const unsubscribe = subscribe(s => setStoreData(s));
+    return () => unsubscribe();
+  }, []);
+
+  const subs = {
+    pending:  storeData.submissions.filter(s => s.status==="pending"),
+    approved: storeData.submissions.filter(s => s.status==="approved"),
+    rejected: storeData.submissions.filter(s => s.status==="rejected"),
+  };
+
+  const SubCard = ({ sub }) => {
+    const u = storeData.users.find(u => u.id === sub.userId);
+    const m = storeData.missions.find(m => m.id === sub.missionId);
+    return (
+      <div className="panel" style={{padding:16, borderRadius:4, display:"flex", flexDirection:"column", gap:12}}>
+        <div style={{display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:8}}>
+          <div>
+            <div style={{fontFamily:"Orbitron", fontSize:13, color:"#00ccff"}}>{u?.name}</div>
+            <div style={{fontSize:13, color:"#e0e0ff", marginTop:2}}>{m?.title}</div>
+            <div style={{fontSize:11, color:"#6a6a9a", marginTop:2}}>+{m?.points} pts • {new Date(sub.createdAt).toLocaleString("pt-BR")}</div>
+          </div>
+          <span className={`tag ${sub.status==="approved"?"badge-approved":sub.status==="rejected"?"badge-rejected":"badge-pending"}`}>
+            {sub.status.toUpperCase()}
+          </span>
+        </div>
+        {(sub.imageUrl || sub.imageBase64) && (
+          <img src={sub.imageUrl || sub.imageBase64} alt="comprovante"
+            style={{width:"100%", maxHeight:160, objectFit:"cover", borderRadius:2,
+              border:"1px solid rgba(0,229,255,.2)", cursor:"pointer"}}
+            onClick={() => setPreview(sub.imageUrl || sub.imageBase64)} />
+        )}
+        {sub.status==="pending" && (
+          <div style={{display:"flex", gap:8}}>
+            <button className="btn btn-green" style={{flex:1, fontSize:10}} onClick={() => reviewSubmission(sub.id,"approved")}>APROVAR</button>
+            <button className="btn btn-red"   style={{flex:1, fontSize:10}} onClick={() => reviewSubmission(sub.id,"rejected")}>REPROVAR</button>
+          </div>
+        )}
+        {sub.status==="approved" && (
+          <div style={{display:"flex", gap:8}}>
+            <button className="btn btn-red" style={{flex:1, fontSize:10}}
+              onClick={() => { if(window.confirm("Deseja estornar essa aprovação? Os pontos serão descontados do usuário.")) revokeSubmission(sub.id); }}>
+              ↩ ESTORNAR APROVAÇÃO
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <div className="grid-2" style={{marginBottom:24}}>
+        {[
+          {label:"Participantes", value:storeData.users.filter(u=>u.role==="user").length, color:"#00ccff"},
+          {label:"Pendentes",     value:subs.pending.length,         color:"#ffdd00"},
+          {label:"Aprovadas",     value:subs.approved.length,        color:"#00ff44"},
+          {label:"Missões",       value:storeData.missions.length,   color:"#ff4dbb"},
+        ].map(s => (
+          <div key={s.label} className="panel" style={{padding:16, borderRadius:4, textAlign:"center"}}>
+            <div style={{fontFamily:"Orbitron", fontSize:28, fontWeight:900, color:s.color}}>{s.value}</div>
+            <div style={{fontSize:11, color:"#6a6a9a", marginTop:4, fontFamily:"Orbitron", letterSpacing:1}}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+      <div className="nav">
+        {[
+          ["validations", `PENDENTES (${subs.pending.length})`],
+          ["approved",    "APROVADAS"],
+          ["rejected",    "REPROVADAS"],
+          ["ranking",     "RANKING"],
+          ["extrato",     "EXTRATO"],
+          ["missions",    "MISSÕES"],
+          ["new",         "+ NOVA MISSÃO"],
+          ["ferramentas",  "FERRAMENTAS"],
+          ["usuarios",     "USUÁRIOS"],
+          ["gincana",      "🏕 GINCANA"],
+        ].map(([k,l]) => (
+          <button key={k}
+            className={`nav-btn ${tab===k ? (k==="new" ? "active-yellow" : "active") : ""}`}
+            onClick={() => setTab(k)}>{l}
+          </button>
+        ))}
+      </div>
+
+      {tab==="validations" && (
+        <PagedList items={subs.pending} emptyLabel="nenhuma pendente" renderItem={sub => <SubCard key={sub.id} sub={sub} />} />
+      )}
+      {tab==="approved" && (
+        <div style={{display:"flex", flexDirection:"column", gap:12}}>
+          <div style={{padding:"12px 16px", background:"rgba(255,50,50,.07)", border:"1px solid rgba(255,50,50,.2)", borderRadius:4, display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:8}}>
+            <div>
+              <div style={{fontFamily:"Orbitron", fontSize:10, color:"#ff4444", letterSpacing:1, marginBottom:3}}>⚡ OTIMIZAR BANCO DE DADOS</div>
+              <div style={{fontSize:12, color:"#6a6a9a"}}>Remove imagens dos comprovantes já revisados para reduzir o consumo de armazenamento.</div>
+            </div>
+            <div style={{display:"flex", alignItems:"center", gap:8}}>
+              {cleanMsg && <span style={{fontFamily:"Orbitron", fontSize:9, color:"#00ff44"}}>{cleanMsg}</span>}
+              <button className="btn btn-red" style={{fontSize:10, padding:"8px 14px"}}
+                disabled={cleaning}
+                onClick={async () => {
+                  if (!window.confirm("Remover imagens dos comprovantes já aprovados e reprovados? Isso libera espaço de armazenamento.")) return;
+                  setCleaning(true);
+                  const count = await cleanReviewedImages();
+                  setCleaning(false);
+                  setCleanMsg(`✓ ${count} imagens removidas`);
+                  setTimeout(() => setCleanMsg(""), 4000);
+                }}>
+                {cleaning ? <span className="spinner"/> : "🗑 LIMPAR IMAGENS"}
+              </button>
+            </div>
+          </div>
+          <PagedList items={subs.approved} emptyLabel="nenhuma aprovada" renderItem={sub => <SubCard key={sub.id} sub={sub} />} />
+        </div>
+      )}
+      {tab==="rejected" && (
+        <PagedList items={subs.rejected} emptyLabel="nenhuma reprovada" renderItem={sub => <SubCard key={sub.id} sub={sub} />} />
+      )}
+      {tab==="ranking" && (
+        <div style={{display:"flex", flexDirection:"column", gap:12}}>
+          {storeData.users.filter(u => u.role==="user").length === 0 && <EmptyState label="nenhum participante cadastrado" />}
+          {[...storeData.users.filter(u => u.role==="user")]
+            .sort((a,b) => b.points - a.points)
+            .map((u, i) => {
+              const lvl = getEffectiveLevelInfo(u.id) || getLevelInfo(u.points);
+              const medals = ["#ffdd00","#c0c0c0","#cd7f32"];
+              const medal = medals[i];
+              const completedList = storeData.missions.filter(m => (u.completedMissions||[]).includes(m.id));
+              const pending = storeData.submissions.filter(s => s.userId===u.id && s.status==="pending").length;
+              return (
+                <UserAdminCard key={u.id} u={u} i={i} lvl={lvl} medal={medal} completedList={completedList} pending={pending} />
+              );
+            })}
+        </div>
+      )}
+      {tab==="extrato" && (
+        <ExtratoAdmin users={storeData.users} />
+      )}
+      {tab==="missions" && (
+        <div style={{display:"flex", flexDirection:"column", gap:12}}>
+          {storeData.missions.length===0 && <EmptyState label="nenhuma missão cadastrada" />}
+          {storeData.missions.map(m => (
+            <MissionCard key={m.id} mission={m} user={adminUser} onSubmit={()=>{}} isAdmin={true}
+              onDelete={async id => { await deleteMission(id); }} />
+          ))}
+        </div>
+      )}
+      {tab==="new" && (
+        <CreateMissionForm onCreated={() => setTab("missions")} />
+      )}
+      {tab==="ferramentas" && (
+        <FerramentasAdmin users={storeData.users} />
+      )}
+      {tab==="usuarios" && (
+        <ExportarUsuarios users={storeData.users} />
+      )}
+      {tab==="gincana" && (
+        <GincanaAdmin users={storeData.users} />
+      )}
+      {preview && (
+        <div style={{position:"fixed", inset:0, background:"rgba(0,0,0,.92)", display:"flex",
+          alignItems:"center", justifyContent:"center", zIndex:1000, padding:20}}
+          onClick={() => setPreview(null)}>
+          <img src={preview} alt="preview" style={{maxWidth:"100%", maxHeight:"90vh", objectFit:"contain"}} />
+          <button style={{position:"absolute", top:20, right:20, background:"none",
+            border:"1px solid rgba(0,229,255,.2)", color:"#d0d8ff", fontFamily:"Orbitron",
+            padding:"8px 16px", cursor:"pointer", fontSize:12}}
+            onClick={() => setPreview(null)}>✕ FECHAR</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Paginação para listas do admin ──────────────────────────────────────────
+function PagedList({ items, renderItem, emptyLabel, pageSize = 10 }) {
+  const [page, setPage] = useState(1);
+  const total = Math.ceil(items.length / pageSize);
+  const slice = items.slice((page - 1) * pageSize, page * pageSize);
+  if (items.length === 0) return <EmptyState label={emptyLabel} />;
+  return (
+    <div style={{display:"flex", flexDirection:"column", gap:12}}>
+      {slice.map(item => renderItem(item))}
+      {total > 1 && (
+        <div style={{display:"flex", justifyContent:"center", alignItems:"center", gap:8, marginTop:8, flexWrap:"wrap"}}>
+          <button className="btn btn-ghost" style={{fontSize:10, padding:"6px 14px"}}
+            disabled={page===1} onClick={() => setPage(p => p - 1)}>◀ ANTERIOR</button>
+          {Array.from({length: total}, (_, i) => i + 1).map(p => (
+            <button key={p} onClick={() => setPage(p)}
+              style={{fontFamily:"Orbitron", fontSize:10, padding:"6px 10px", minWidth:32,
+                background: p===page ? "linear-gradient(135deg,#00bcd4,#0077aa)" : "transparent",
+                border: p===page ? "none" : "1px solid rgba(0,229,255,.25)",
+                color: p===page ? "#fff" : "#d0d8ff", cursor:"pointer", borderRadius:2, transition:"all .2s"}}>
+              {p}
+            </button>
+          ))}
+          <button className="btn btn-ghost" style={{fontSize:10, padding:"6px 14px"}}
+            disabled={page===total} onClick={() => setPage(p => p + 1)}>PRÓXIMA ▶</button>
+          <span style={{fontFamily:"Orbitron", fontSize:9, color:"#6a6a9a", letterSpacing:1}}>
+            {(page-1)*pageSize+1}–{Math.min(page*pageSize, items.length)} de {items.length}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EmptyState({ label }) {
+  return (
+    <div style={{textAlign:"center", color:"#6a6a9a", padding:40}}>
+      <div style={{fontFamily:"Orbitron", fontSize:24, marginBottom:8}}>◈</div>
+      {label}
+    </div>
+  );
+}
+
+function App() {
+  const [user, setUser] = useState(null);
+  const [tick, setTick] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+  const [dbError, setDbError] = useState(false);
+  const [profile, setProfile] = useState(null);
+  const [effectsOn, setEffectsOn] = useState(() => {
+    try { return localStorage.getItem('mlup_effects') !== 'off'; } catch(e) { return true; }
+  });
+
+  useEffect(() => {
+    document.body.classList.toggle('no-effects', !effectsOn);
+    try { localStorage.setItem('mlup_effects', effectsOn ? 'on' : 'off'); } catch(e) {}
+  }, [effectsOn]);
+
+  useEffect(() => {
+    // subscribeDB retorna cleanup() diretamente — o useEffect executa
+    // essa função ao desmontar o App, removendo os listeners via ref.off(handler).
+    const cleanup = subscribeDB(() => {
+      setLoaded(true);
+      setDbError(store.dbError || false);
+    });
+    return cleanup;
+  }, []);
+
+  if (!loaded) return (
+    <div className="app" style={{display:"flex", alignItems:"center", justifyContent:"center", minHeight:"100vh", flexDirection:"column", gap:20}}>
+      <div className="scanline"/>
+      <div style={{fontFamily:"Orbitron", fontSize:28, fontWeight:900, background:"linear-gradient(135deg,#00e5ff,#ffd700)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent"}}>MISSÃO LEVEL-UP</div>
+      <div style={{fontFamily:"Orbitron", fontSize:11, color:"#6a6a9a", letterSpacing:3}}>CARREGANDO...</div>
+      <div className="spinner" style={{width:32, height:32}}/>
+    </div>
+  );
+
+  if (dbError) return (
+    <div className="app" style={{display:"flex", alignItems:"center", justifyContent:"center", minHeight:"100vh", flexDirection:"column", gap:20, padding:24}}>
+      <div className="scanline"/>
+      <div style={{fontFamily:"Orbitron", fontSize:28, fontWeight:900, background:"linear-gradient(135deg,#00e5ff,#ffd700)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent"}}>MISSÃO LEVEL-UP</div>
+      <div style={{fontFamily:"Orbitron", fontSize:13, color:"#ff2255", letterSpacing:2, textAlign:"center", maxWidth:340, lineHeight:1.8}}>
+        ⚠️ SEM CONEXÃO COM O SERVIDOR
+      </div>
+      <div style={{fontSize:14, color:"#9090bb", textAlign:"center", maxWidth:340, lineHeight:1.8}}>
+        Não foi possível conectar ao servidor. Verifique sua conexão com a internet e tente recarregar a página.
+      </div>
+      <button className="btn btn-cyan" style={{marginTop:8}} onClick={() => window.location.reload()}>
+        ↺ TENTAR NOVAMENTE
+      </button>
+    </div>
+  );
+
+  if (false) return (
+    <div className="app" style={{display:"flex", alignItems:"center", justifyContent:"center", minHeight:"100vh", flexDirection:"column", gap:20}}>
+      <div className="scanline"/>
+      <div style={{fontFamily:"Orbitron", fontSize:28, fontWeight:900, background:"linear-gradient(135deg,#00e5ff,#ffd700)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent"}}>MISSÃO LEVEL-UP</div>
+      <div style={{fontFamily:"Orbitron", fontSize:11, color:"#6a6a9a", letterSpacing:3}}>CARREGANDO...</div>
+      <div className="spinner" style={{width:32, height:32}}/>
+    </div>
+  );
+
+  if (!user) return (
+    <div className="app">
+      <div className="scanline"/>
+      <AuthScreen onLogin={setUser} />
+    </div>
+  );
+
+  const currentUser = store.users.find(u => u.id === user.id) || user;
+  const isAdmin = currentUser.role === "admin";
+
+  return (
+    <div className="app">
+      <div className="scanline"/>
+      <div style={{borderBottom:"1px solid rgba(0,229,255,.2)", background:"rgba(13,10,46,.97)",
+        position:"sticky", top:0, zIndex:100, backdropFilter:"blur(14px)"}}>
+        <div style={{maxWidth:1200, margin:"0 auto", padding:"12px 20px", display:"flex",
+          alignItems:"center", justifyContent:"space-between"}}>
+          <Logo size="sm" />
+          <div style={{display:"flex", alignItems:"center", gap:12}}>
+            <div style={{textAlign:"right"}} className="hide-mobile">
+              <div style={{fontFamily:"Orbitron", fontSize:11, color:"#00ccff"}}>{currentUser.name}</div>
+              <div style={{fontSize:11, color:"#ffdd00"}}>{isAdmin ? "👑 ADMIN" : `${currentUser.points} PTS`}</div>
+            </div>
+            <button
+              className={`effects-toggle${effectsOn ? "" : " off"}`}
+              title={effectsOn ? "Desativar efeitos visuais" : "Ativar efeitos visuais"}
+              onClick={() => setEffectsOn(v => !v)}>
+              {effectsOn ? "✦ EFEITOS" : "○ EFEITOS"}
+            </button>
+            <button className="btn btn-ghost" style={{fontSize:10, padding:"8px 14px"}} onClick={() => setUser(null)}>SAIR</button>
+          </div>
+        </div>
+      </div>
+      <div style={{maxWidth:1200, margin:"0 auto", padding:"24px 20px 60px"}}>
+        {isAdmin
+          ? <AdminDashboard adminUser={currentUser} />
+          : <UserDashboard user={currentUser} onUpdate={() => setTick(t=>t+1)} />
+        }
+      </div>
+    </div>
+  );
+}
+
+// window.onload movido para script externo abaixo — evita race condition com Babel

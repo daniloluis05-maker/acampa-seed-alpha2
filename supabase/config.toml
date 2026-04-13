@@ -62,7 +62,7 @@ schema_paths = []
 enabled = true
 # Specifies an ordered list of seed files to load during db reset.
 # Supports glob patterns relative to supabase directory: "./seeds/*.sql"
-sql_paths = ["./seed.sql"]
+sql_paths = []
 
 [db.network_restrictions]
 # Enable management of network restrictions.
@@ -395,24 +395,20 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
 
+[functions.admin-action]
+enabled = true
+verify_jwt = true  # Requer token — apenas admins autenticados
+import_map = "./functions/admin-action/deno.json"
+entrypoint = "./functions/admin-action/index.ts"
+
 [functions.register-user]
 enabled = true
-verify_jwt = true
+verify_jwt = false  # Chamada antes do login — usuário ainda não tem token JWT
 import_map = "./functions/register-user/deno.json"
-# Uncomment to specify a custom file path to the entrypoint.
-# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
 entrypoint = "./functions/register-user/index.ts"
-# Specifies static files to be bundled with the function. Supports glob patterns.
-# For example, if you want to serve static HTML pages in your function:
-# static_files = [ "./functions/register-user/*.html" ]
 
 [functions.login-user]
 enabled = true
-verify_jwt = true
+verify_jwt = false  # Chamada antes do login — usuário ainda não tem token JWT
 import_map = "./functions/login-user/deno.json"
-# Uncomment to specify a custom file path to the entrypoint.
-# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
 entrypoint = "./functions/login-user/index.ts"
-# Specifies static files to be bundled with the function. Supports glob patterns.
-# For example, if you want to serve static HTML pages in your function:
-# static_files = [ "./functions/login-user/*.html" ]

@@ -38,6 +38,8 @@ serve(async (req) => {
 
       case "approve_submission": {
         const { submissionId, userId, missionId, points, approvedDate, approvedWeek, approvedMonth, approvedBiweekly } = payload;
+        const { data: userBefore } = await supabase.from("users").select("points").eq("id", userId).maybeSingle();
+        const pontosAntes = userBefore?.points ?? 0;
         await supabase.rpc("increment_points", { player_id: userId, row_points: points });
         await supabase.from("submissions").update({
           status: "approved", approved_date: approvedDate,
@@ -47,7 +49,7 @@ serve(async (req) => {
         await supabase.from("historico_pontos").insert({
           user_id: userId, tipo: "aprovacao", pontos: points,
           descricao: `Missão aprovada: ${missionId}`,
-          pontos_antes: 0, pontos_depois: points, data: new Date().toISOString()
+          pontos_antes: pontosAntes, pontos_depois: pontosAntes + points, data: new Date().toISOString()
         });
         return responder({ ok: true });
       }
@@ -55,10 +57,13 @@ serve(async (req) => {
       case "reject_submission": {
         const { submissionId, userId, points, isRevoke } = payload;
         if (isRevoke) {
+          const { data: userBefore } = await supabase.from("users").select("points").eq("id", userId).maybeSingle();
+          const pontosAntes = userBefore?.points ?? 0;
           await supabase.rpc("increment_points", { player_id: userId, row_points: -Math.abs(points) });
           await supabase.from("historico_pontos").insert({
             user_id: userId, tipo: "estorno", pontos: -Math.abs(points),
-            descricao: "Estorno pelo admin", pontos_antes: 0, pontos_depois: 0,
+            descricao: "Estorno pelo admin",
+            pontos_antes: pontosAntes, pontos_depois: pontosAntes - Math.abs(points),
             data: new Date().toISOString()
           });
         }
@@ -71,11 +76,13 @@ serve(async (req) => {
 
       case "correct_points": {
         const { userId, delta, motivo } = payload;
+        const { data: userBefore } = await supabase.from("users").select("points").eq("id", userId).maybeSingle();
+        const pontosAntes = userBefore?.points ?? 0;
         await supabase.rpc("increment_points", { player_id: userId, row_points: delta });
         await supabase.from("historico_pontos").insert({
           user_id: userId, tipo: "correcao", pontos: delta,
           descricao: motivo || "Correção manual pelo admin",
-          pontos_antes: 0, pontos_depois: delta, data: new Date().toISOString()
+          pontos_antes: pontosAntes, pontos_depois: pontosAntes + delta, data: new Date().toISOString()
         });
         return responder({ ok: true });
       }
