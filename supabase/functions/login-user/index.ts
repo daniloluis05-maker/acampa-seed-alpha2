@@ -1,6 +1,5 @@
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
+import bcrypt from "npm:bcryptjs";
 
 // ── Constantes de rate limiting ───────────────────────────────────────────────
 const MAX_TENTATIVAS = 5;
@@ -14,7 +13,7 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { status: 200, headers: CORS });
   }
@@ -57,7 +56,6 @@ serve(async (req) => {
           429
         );
       }
-      // Janela expirada: resetar
       if (rl.bloqueado_ate && rl.bloqueado_ate <= agora) {
         await supabase
           .from(TABELA_RATE)
@@ -81,8 +79,6 @@ serve(async (req) => {
     }
 
     // ── Verificação de senha ───────────────────────────────────────────────────
-    // Hashes bcrypt começam com "$2a$" ou "$2b$".
-    // Hashes legados (SHA-256) são migrados automaticamente no primeiro login.
     let senhaCorreta = false;
     let migrarHash = false;
 
@@ -106,7 +102,7 @@ serve(async (req) => {
       .upsert({ email: emailNorm, tentativas: 0, bloqueado_ate: null });
 
     if (migrarHash) {
-      const novoHash = await bcrypt.hash(password);
+      const novoHash = await bcrypt.hash(password, 10);
       await supabase.from("users").update({ password: novoHash }).eq("id", user.id);
     }
 
@@ -136,34 +132,8 @@ async function registrarFalha(
   });
 }
 
-// Reproduz o hash legado apenas para compatibilidade de migração.
-// Remover esta função após todos os registros terem sido migrados para bcrypt.
 async function sha256Legado(senha: string): Promise<string> {
   const data = new TextEncoder().encode(senha + "missao-level-up-salt-2026");
   const buf = await crypto.subtle.digest("SHA-256", data);
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
-
-/*
-─────────────────────────────────────────────────────────────────────────────
-  MIGRAÇÃO NECESSÁRIA — executar no SQL Editor do Supabase antes do deploy
-─────────────────────────────────────────────────────────────────────────────
-
-  CREATE TABLE IF NOT EXISTS login_rate_limit (
-    email         TEXT PRIMARY KEY,
-    tentativas    INTEGER NOT NULL DEFAULT 0,
-    bloqueado_ate BIGINT,
-    atualizado_em TIMESTAMPTZ DEFAULT NOW()
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_rl_bloqueado_ate ON login_rate_limit (bloqueado_ate);
-
-  ALTER TABLE login_rate_limit ENABLE ROW LEVEL SECURITY;
-  -- Nenhuma policy pública: acesso apenas via service_role (Edge Function)
-
-  -- Limpeza periódica via pg_cron (opcional):
-  -- SELECT cron.schedule('limpar-rate-limit', '0 * * * *',
-  --   $$ DELETE FROM login_rate_limit WHERE bloqueado_ate < EXTRACT(EPOCH FROM NOW()) $$);
-
-─────────────────────────────────────────────────────────────────────────────
-*/

@@ -1,6 +1,5 @@
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
+import bcrypt from "npm:bcryptjs";
 
 // ── CORS headers ──────────────────────────────────────────────────────────────
 const CORS = {
@@ -9,7 +8,7 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { status: 200, headers: CORS });
   }
@@ -31,7 +30,6 @@ serve(async (req) => {
     if (password.length < 6) {
       return responder({ error: "Senha mínima: 6 caracteres." }, 400);
     }
-    // Validação básica de formato de e-mail
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return responder({ error: "Formato de e-mail inválido." }, 400);
     }
@@ -65,22 +63,22 @@ serve(async (req) => {
       return responder({ error: "Este nome bíblico já está em uso. Escolha outro." }, 400);
     }
 
-    // ── Hash bcrypt (custo 10 — ~100ms, seguro e performático para Edge) ────────
-    const passwordHash = await bcrypt.hash(password);
+    // ── Hash bcrypt (custo 10) ─────────────────────────────────────────────────
+    const passwordHash = await bcrypt.hash(password, 10);
     const id = crypto.randomUUID();
 
     const { error: insertError } = await supabase.from("users").insert({
       id,
-      name:              nameNorm,
-      full_name:         fullName?.trim() || "",
-      email:             emailNorm,
-      password:          passwordHash,
-      role:              "user",
-      points:            0,
+      name:               nameNorm,
+      full_name:          fullName?.trim() || "",
+      email:              emailNorm,
+      password:           passwordHash,
+      role:               "user",
+      points:             0,
       completed_missions: [],
-      daily_points:      {},
-      missed_days:       0,
-      last_active_day:   "",
+      daily_points:       {},
+      missed_days:        0,
+      last_active_day:    "",
     });
 
     if (insertError) {
@@ -88,18 +86,17 @@ serve(async (req) => {
       return responder({ error: "Erro ao criar conta. Tente novamente." }, 500);
     }
 
-    // Retornar perfil público — sem o campo password
     return responder({
       id,
-      name:             nameNorm,
-      fullName:         fullName?.trim() || "",
-      email:            emailNorm,
-      role:             "user",
-      points:           0,
+      name:              nameNorm,
+      fullName:          fullName?.trim() || "",
+      email:             emailNorm,
+      role:              "user",
+      points:            0,
       completedMissions: [],
-      dailyPoints:      {},
-      missedDays:       0,
-      lastActiveDay:    "",
+      dailyPoints:       {},
+      missedDays:        0,
+      lastActiveDay:     "",
     });
 
   } catch (err) {
