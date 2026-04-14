@@ -37,6 +37,10 @@
          Por ora, usamos a versão CDN com crossorigin para melhor cache. -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.10/babel.min.js" crossorigin></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <!-- ── Variáveis de ambiente locais (sobrescreve os defaults abaixo).
+         Copie _env.example.js para _env.js e preencha suas credenciais.
+         Este arquivo NÃO deve ser commitado. ── -->
+    <script src="_env.js" onerror="console.warn('[mlup] _env.js não encontrado — usando credenciais embutidas no HTML.')"></script>
     <style>
 /* ── Variáveis globais de design ────────────────────────────────────────────── */
 :root {
@@ -468,8 +472,12 @@ function getEffectiveLevelInfo(userId) {
 // 6. Edge Function para validação server-side de pontuação (melhoria futura recomendada)
 // ─────────────────────────────────────────────────────────────────────────────
 // ── Configuração de ambiente ─────────────────────────────────────────────────
-const SUPABASE_URL = "https://oyvvlbyxlaetlghzgjam.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95dnZsYnl4bGFldGxnaHpnamFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2Mzc1NDksImV4cCI6MjA5MDIxMzU0OX0.4JpnIymqZOgNnw819I_o8qJq3BwOuvU4XLZ_w79Npqw";
+// Lê de _env.js (window.__ENV__) se disponível; caso contrário usa os valores embutidos.
+// Para sobrescrever sem editar este arquivo: copie _env.example.js → _env.js e preencha.
+const SUPABASE_URL = (window.__ENV__ && window.__ENV__.SUPABASE_URL)
+  || "https://oyvvlbyxlaetlghzgjam.supabase.co";
+const SUPABASE_KEY = (window.__ENV__ && window.__ENV__.SUPABASE_KEY)
+  || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95dnZsYnl4bGFldGxnaHpnamFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2Mzc1NDksImV4cCI6MjA5MDIxMzU0OX0.4JpnIymqZOgNnw819I_o8qJq3BwOuvU4XLZ_w79Npqw";
 
 // ── MODO ACAMPAMENTO (Acampa Seed 2026) ──────────────────────────────────────
 // Durante o período do acampamento:
@@ -1000,13 +1008,22 @@ async function registerUser(name, fullName, email, password) {
         body: JSON.stringify({ name, fullName, email, password })
       }
     );
+    if (res.status === 404) {
+      console.error("[registerUser] Edge Function nao encontrada. Deploy: supabase functions deploy register-user");
+      return { error: "Servico de cadastro indisponivel. Contate o administrador." };
+    }
+    if (res.status === 500) {
+      console.error("[registerUser] Erro 500 — verifique se SUPABASE_SERVICE_ROLE_KEY esta configurada nos secrets da Edge Function.");
+      return { error: "Erro interno no servidor. Os secrets da Edge Function podem nao estar configurados." };
+    }
     const data = await res.json();
     if (data.error) return { error: data.error };
     store.users = [...store.users, data];
     notify();
     return { user: data };
   } catch (e) {
-    return { error: "Erro de conexão. Tente novamente." };
+    console.error("[registerUser] Falha de rede:", e);
+    return { error: "Erro de conexao. Verifique sua internet e tente novamente." };
   }
 }
 async function loginUser(email, password) {
@@ -1022,13 +1039,22 @@ async function loginUser(email, password) {
         body: JSON.stringify({ email, password })
       }
     );
+    if (res.status === 404) {
+      console.error("[loginUser] Edge Function nao encontrada. Deploy: supabase functions deploy login-user");
+      return { error: "Servico de autenticacao indisponivel. Contate o administrador." };
+    }
+    if (res.status === 500) {
+      console.error("[loginUser] Erro 500 — verifique se SUPABASE_SERVICE_ROLE_KEY esta configurada nos secrets da Edge Function.");
+      return { error: "Erro interno no servidor. Os secrets da Edge Function podem nao estar configurados." };
+    }
     const data = await res.json();
     if (data.error) return { error: data.error };
-    // Grava sessão no window para validação defensiva de identidade
+    // Grava sessao no window para validacao defensiva de identidade
     if (data && data.id) window.__mlup_session = data.id;
     return { user: data };
   } catch (e) {
-    return { error: "Erro de conexão. Tente novamente." };
+    console.error("[loginUser] Falha de rede:", e);
+    return { error: "Erro de conexao. Verifique sua internet e tente novamente." };
   }
 }
 async function submitMission(userId, missionId, imageBase64) {
