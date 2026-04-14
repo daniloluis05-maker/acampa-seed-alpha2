@@ -77,8 +77,8 @@ serve(async (req) => {
       password:          passwordHash,
       role:              "user",
       points:            0,
-      completed_missions: [],
-      daily_points:      {},
+      completed_missions: JSON.stringify([]),
+      daily_points:      JSON.stringify({}),
       missed_days:       0,
       last_active_day:   "",
     });
