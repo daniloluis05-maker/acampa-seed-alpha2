@@ -6,3 +6,4 @@
 .env.local
 .env.*.local
 _env.js
+.secrets
